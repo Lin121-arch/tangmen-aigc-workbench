@@ -1,6 +1,6 @@
 {
   "name": "tangmen-aigc-workbench",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Tangmen AI creative workbench: chat, canvas and director stage.",
   "license": "MIT",
