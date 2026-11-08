@@ -1,0 +1,211 @@
+import type { ProjectAgentConfig, AgentProvider, AgentModelsResult } from '../../src/shared/agent-config';
+import type { TemplateModelSelection } from '../../src/shared/template-models';
+import { ipcRenderer, contextBridge, webUtils } from 'electron';
+import type { IpcRendererEvent } from 'electron';
+import { IPC_CHANNELS } from '../../src/shared/ipc.channels';
+import { installStartupScreen } from './startup-screen';
+import type {
+  Project,
+  CloseReadyResult,
+  BeforeCloseRequest,
+  GenerationTaskSummary,
+  ProjectIndex,
+  ProjectPage,
+  ProjectPageQuery,
+  ChatMessage,
+  CodexQueueResult,
+  Artifact,
+  GenerateImageRequest,
+  GenerateImageResult,
+  GenerateVideoRequest,
+  GenerateVideoResult,
+  ExtractVideoAudioRequest,
+  ExtractVideoAudioResult,
+  UpscaleVideoRequest,
+  UpscaleVideoResult,
+  ComfyWorkflowInfo,
+  AppSettingsView,
+  SaveAppSettingsRequest,
+  TestQwenConnectionRequest,
+  TestGoogleAiConnectionRequest,
+  TestSeedreamConnectionRequest,
+  ConnectionTestResult,
+  LunaModelsRequest,
+  LunaModelsResult,
+  ImportAudioResult,
+  ImportProjectMediaResult,
+  ListProjectMediaResult,
+  CanvasCommandRequest,
+  CanvasCommandResponse,
+  AvailableSkill,
+  ClearAgentContextResult,
+  ProjectChatMessagePush,
+  ProjectArtifactPush,
+  ProjectTurnEndPush,
+  SavePastedImageResult,
+  SaveChatTextAttachmentResult,
+  SaveImageEditRequest,
+  SaveImageEditResult,
+  SaveBoardPreviewRequest,
+  SaveBoardPreviewResult,
+} from '../../src/shared/ipc.types';
+import type { SaveDirectorStillRequest, SaveDirectorStillResult, SaveDirectorVideoRequest, SaveDirectorVideoResult } from '../../src/shared/director.types';
+
+export interface ElectronAPI {
+  importDirectorModel: (projectId: string) => Promise<{ success: boolean; canceled?: boolean; relativePath?: string; name?: string; error?: string }>;
+  generateChatMedia: (request: import('../../src/shared/ipc.types').ChatMediaRequest) => Promise<import('../../src/shared/ipc.types').ChatMediaResult>;
+  refreshChatMedia: (projectId: string) => Promise<ChatMessage[]>;
+  onBeforeClose: (callback: (request: BeforeCloseRequest) => void) => () => void;
+  onCloseCancelled: (callback: () => void) => () => void;
+  confirmClose: (result: CloseReadyResult) => void;
+  platform: NodeJS.Platform;
+  createProject: (name: string, folderPath: string, agent?: ProjectAgentConfig, templateId?: string, templateModels?: TemplateModelSelection) => Promise<Project>;
+  listProjects: () => Promise<ProjectIndex>;
+  createConversation: (agent?: ProjectAgentConfig) => Promise<Project>;
+  searchProjects: (query: ProjectPageQuery) => Promise<ProjectPage>;
+  loadProject: (id: string) => Promise<Project | null>;
+  setProjectAgent: (id: string, agent: ProjectAgentConfig) => Promise<Project>;
+  closeProject: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  importAudio: (projectId: string) => Promise<ImportAudioResult>;
+  importProjectMedia: (projectId: string) => Promise<ImportProjectMediaResult>;
+  listProjectMedia: (projectId: string) => Promise<ListProjectMediaResult>;
+  sendChatMessage: (projectId: string, message: ChatMessage) => Promise<void>;
+  savePastedImage: (
+    projectId: string,
+    data: ArrayBuffer,
+    mimeType: string,
+  ) => Promise<SavePastedImageResult>;
+  saveChatTextAttachment: (projectId: string, content: string) => Promise<SaveChatTextAttachmentResult>;
+  interruptAgent: (projectId: string) => Promise<void>;
+  getCodexQueue: (projectId: string) => Promise<CodexQueueResult>;
+  sendCodexQueuedNow: (projectId: string, messageId: string) => Promise<void>;
+  loadChatHistory: (folderPath: string) => Promise<ChatMessage[]>;
+  listAgentModels: (provider: AgentProvider) => Promise<AgentModelsResult>;
+  listAgentSkills: (projectId: string) => Promise<AvailableSkill[]>;
+  clearAgentContext: (projectId: string) => Promise<ClearAgentContextResult>;
+  saveCanvasSnapshot: (folderPath: string, snapshot: unknown) => Promise<{ success: boolean }>;
+  loadCanvasSnapshot: (folderPath: string) => Promise<unknown | null>;
+  saveDirectorStill: (request: SaveDirectorStillRequest) => Promise<SaveDirectorStillResult>;
+  saveDirectorVideo: (request: SaveDirectorVideoRequest) => Promise<SaveDirectorVideoResult>;
+  saveImageEdit: (request: SaveImageEditRequest) => Promise<SaveImageEditResult>;
+  saveBoardPreview: (request: SaveBoardPreviewRequest) => Promise<SaveBoardPreviewResult>;
+  saveArtifactContent: (
+    projectId: string,
+    relPath: string,
+    content: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  generateImage: (request: GenerateImageRequest) => Promise<GenerateImageResult>;
+  generateVideo: (request: GenerateVideoRequest) => Promise<GenerateVideoResult>;
+  extractVideoAudio: (request: ExtractVideoAudioRequest) => Promise<ExtractVideoAudioResult>;
+  upscaleVideo: (request: UpscaleVideoRequest) => Promise<UpscaleVideoResult>;
+  listComfyWorkflows: () => Promise<ComfyWorkflowInfo[]>;
+  listGenerationTasks: (projectId: string) => Promise<GenerationTaskSummary[]>;
+  acknowledgeGenerationTask: (projectId: string, nodeId: string, taskId: string) => Promise<void>;
+  dismissGenerationTask: (projectId: string, nodeId: string, taskId: string) => Promise<void>;
+  getAppSettings: () => Promise<AppSettingsView>;
+  discoverServiceModels: (provider: import('../../src/shared/model-services').ModelProvider, endpointId: string) => Promise<string[]>;
+  discoverServiceModelCatalog: (provider: import('../../src/shared/model-services').ModelProvider, endpointId: string) => Promise<import('../../src/shared/model-services').DiscoveredServiceModel[]>;
+  saveAppSettings: (request: SaveAppSettingsRequest) => Promise<AppSettingsView>;
+  testComfyUIConnection: (baseUrl: string) => Promise<ConnectionTestResult>;
+  testQwenConnection: (request: TestQwenConnectionRequest) => Promise<ConnectionTestResult>;
+  testGoogleAiConnection: (request: TestGoogleAiConnectionRequest) => Promise<ConnectionTestResult>;
+  testSeedreamConnection: (request: TestSeedreamConnectionRequest) => Promise<ConnectionTestResult>;
+  listLunaModels: (request: LunaModelsRequest) => Promise<LunaModelsResult>;
+  onChatMessage: (callback: (event: ProjectChatMessagePush) => void) => () => void;
+  onArtifact: (callback: (event: ProjectArtifactPush) => void) => () => void;
+  onTurnEnd: (callback: (event: ProjectTurnEndPush) => void) => () => void;
+  onCanvasCommand: (callback: (command: CanvasCommandRequest) => void) => () => void;
+  sendCanvasCommandResult: (response: CanvasCommandResponse) => void;
+  showOpenDialog: (options?: Electron.OpenDialogOptions) => Promise<string[]>;
+  showItemInFolder: (path: string) => void;
+  getPathForFile: (file: File) => string;
+}
+
+const invoke = <T>(channel: string, ...args: unknown[]): Promise<T> =>
+  ipcRenderer.invoke(channel, ...args);
+
+const onPush = <T>(channel: string, callback: (payload: T) => void) => {
+  const handler = (_event: IpcRendererEvent, payload: T) => callback(payload);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.off(channel, handler);
+};
+
+const api: ElectronAPI = {
+  onBeforeClose: (callback) => onPush(IPC_CHANNELS.push.beforeClose, callback),
+  onCloseCancelled: (callback) => onPush(IPC_CHANNELS.push.closeCancelled, callback),
+  confirmClose: (result) => ipcRenderer.send(IPC_CHANNELS.app.closeReady, result),
+  platform: process.platform,
+  createProject: (name, folderPath, agent, templateId, templateModels) =>
+    invoke(IPC_CHANNELS.project.create, name, folderPath, agent, templateId, templateModels),
+  listProjects: () => invoke(IPC_CHANNELS.project.list),
+  createConversation: (agent) => invoke(IPC_CHANNELS.project.createConversation, agent),
+  generateChatMedia: (request) => invoke(IPC_CHANNELS.chat.generateMedia, request),
+  refreshChatMedia: (projectId) => invoke(IPC_CHANNELS.chat.refreshMedia, projectId),
+  searchProjects: (query) => invoke(IPC_CHANNELS.project.search, query),
+  loadProject: (id) => invoke(IPC_CHANNELS.project.load, id),
+  setProjectAgent: (id, agent) => invoke(IPC_CHANNELS.project.setAgent, id, agent),
+  closeProject: (id) => invoke(IPC_CHANNELS.project.close, id),
+  deleteProject: (id) => invoke(IPC_CHANNELS.project.delete, id),
+  importAudio: (projectId) => invoke(IPC_CHANNELS.project.importAudio, projectId),
+  importProjectMedia: (projectId) => invoke(IPC_CHANNELS.project.importMedia, projectId),
+  listProjectMedia: (projectId) => invoke(IPC_CHANNELS.project.listMedia, projectId),
+  sendChatMessage: (projectId, message) =>
+    invoke(IPC_CHANNELS.chat.sendMessage, projectId, message),
+  savePastedImage: (projectId, data, mimeType) =>
+    invoke(IPC_CHANNELS.chat.savePastedImage, projectId, data, mimeType),
+  saveChatTextAttachment: (projectId, content) => invoke(IPC_CHANNELS.chat.saveTextAttachment, projectId, content),
+  getCodexQueue: (projectId) => invoke(IPC_CHANNELS.chat.codexQueue, projectId),
+  sendCodexQueuedNow: (projectId, messageId) => invoke(IPC_CHANNELS.chat.codexSendNow, projectId, messageId),
+  interruptAgent: (projectId) =>
+    invoke(IPC_CHANNELS.chat.interrupt, projectId),
+  loadChatHistory: (folderPath) => invoke(IPC_CHANNELS.chat.loadHistory, folderPath),
+  listAgentModels: (provider) => invoke(IPC_CHANNELS.chat.listModels, provider),
+  listAgentSkills: (projectId) => invoke(IPC_CHANNELS.chat.listSkills, projectId),
+  clearAgentContext: (projectId) => invoke(IPC_CHANNELS.chat.clearContext, projectId),
+  saveCanvasSnapshot: (folderPath, snapshot) => invoke(IPC_CHANNELS.canvas.save, folderPath, snapshot),
+  loadCanvasSnapshot: (folderPath) => invoke(IPC_CHANNELS.canvas.load, folderPath),
+  importDirectorModel: (projectId) => invoke(IPC_CHANNELS.canvas.importDirectorModel, projectId),
+  saveDirectorStill: (request) => invoke(IPC_CHANNELS.canvas.saveDirectorStill, request),
+  saveDirectorVideo: (request) => invoke(IPC_CHANNELS.canvas.saveDirectorVideo, request),
+  saveImageEdit: (request) => invoke(IPC_CHANNELS.canvas.saveImageEdit, request),
+  saveBoardPreview: (request) => invoke(IPC_CHANNELS.canvas.saveBoardPreview, request),
+  saveArtifactContent: (projectId, relPath, content) =>
+    invoke(IPC_CHANNELS.artifact.save, projectId, relPath, content),
+  generateImage: (request) => invoke(IPC_CHANNELS.comfyui.generateImage, request),
+  generateVideo: (request) => invoke(IPC_CHANNELS.comfyui.generateVideo, request),
+  extractVideoAudio: (request) => invoke(IPC_CHANNELS.comfyui.extractVideoAudio, request),
+  upscaleVideo: (request) => invoke(IPC_CHANNELS.comfyui.upscaleVideo, request),
+  listComfyWorkflows: () => invoke(IPC_CHANNELS.comfyui.listWorkflows),
+  listGenerationTasks: (projectId) => invoke(IPC_CHANNELS.comfyui.listGenerationTasks, projectId),
+  acknowledgeGenerationTask: (projectId, nodeId, taskId) => invoke(IPC_CHANNELS.comfyui.acknowledgeGenerationTask, projectId, nodeId, taskId),
+  dismissGenerationTask: (projectId, nodeId, taskId) => invoke(IPC_CHANNELS.comfyui.dismissGenerationTask, projectId, nodeId, taskId),
+  getAppSettings: () => invoke(IPC_CHANNELS.settings.get),
+  discoverServiceModels: (provider, endpointId) => invoke(IPC_CHANNELS.settings.discoverServiceModels, provider, endpointId),
+  discoverServiceModelCatalog: (provider, endpointId) => invoke(IPC_CHANNELS.settings.discoverServiceModelCatalog, provider, endpointId),
+  saveAppSettings: (request) => invoke(IPC_CHANNELS.settings.save, request),
+  testComfyUIConnection: (baseUrl) => invoke(IPC_CHANNELS.settings.testComfyUI, baseUrl),
+  testQwenConnection: (request) => invoke(IPC_CHANNELS.settings.testQwen, request),
+  testGoogleAiConnection: (request) => invoke(IPC_CHANNELS.settings.testGoogleAi, request),
+  listLunaModels: (request) => invoke(IPC_CHANNELS.settings.listLunaModels, request),
+  testSeedreamConnection: (request) => invoke(IPC_CHANNELS.settings.testSeedream, request),
+  onChatMessage: (callback) => onPush(IPC_CHANNELS.push.chatMessage, callback),
+  onArtifact: (callback) => onPush(IPC_CHANNELS.push.artifact, callback),
+  onTurnEnd: (callback) => onPush(IPC_CHANNELS.push.turnEnd, callback),
+  onCanvasCommand: (callback) => onPush(IPC_CHANNELS.push.canvasCommand, callback),
+  sendCanvasCommandResult: (response) => ipcRenderer.send(IPC_CHANNELS.canvas.commandResult, response),
+  showOpenDialog: (options) => invoke('dialog:showOpenDialog', options),
+  showItemInFolder: (path) => ipcRenderer.send('shell:showItemInFolder', path),
+  // File.path was removed in Electron 32 - this is the supported way
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+};
+
+contextBridge.exposeInMainWorld('electronAPI', api);
+
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}
+
+installStartupScreen();

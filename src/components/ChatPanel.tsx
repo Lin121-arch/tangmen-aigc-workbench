@@ -1,0 +1,336 @@
+import { agentLabel, type AgentProvider } from '../shared/agent-config'
+import { useRef, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import type { ChatMessage as ChatMessageType } from '../shared/ipc.types'
+import { ChatMessageItem } from './ChatMessage'
+import { ChatSubagentGroup } from './ChatSubagentGroup'
+import { ChatInput } from './ChatInput'
+import { useAppStore } from '../stores/app.store'
+import { chatDisplayMessages, sameChatQueue } from '../shared/chat-state'
+import { groupChatSubagents } from '../shared/chat-subagents'
+import { StudioComposer, type StudioSuggestion } from './StudioComposer'
+import { StudioIcon } from './StudioIcon'
+import { ChatMediaCard } from './ChatMediaCard'
+import type { ProjectAgentConfig } from '../shared/agent-config'
+
+const HISTORY_PAGE_SIZE = 100
+const EMPTY_QUEUE: ChatMessageType[] = []
+
+export function ChatPanel({ standalone = false }: { standalone?: boolean } = {}) {
+  const messages = useAppStore((state) => state.messages)
+  const chatHistoryError = useAppStore((state) => state.chatHistoryError)
+  const currentProject = useAppStore((state) => state.currentProject)
+  const sendChatMessage = useAppStore((state) => state.sendChatMessage)
+  const isAgentThinking = useAppStore((state) => (
+    state.currentProject ? !!state.agentThinkingByProject[state.currentProject.id] : false
+  ))
+  const messagesViewportRef = useRef<HTMLDivElement>(null)
+  const shouldStickToBottomRef = useRef(true)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [isClearingContext, setIsClearingContext] = useState(false)
+  const [clearError, setClearError] = useState('')
+  const [sendError, setSendError] = useState('')
+  const [switchingAgent, setSwitchingAgent] = useState(false)
+  const [suggestion, setSuggestion] = useState<StudioSuggestion>()
+  const [queueState, setQueueState] = useState<{ projectId: string; messages: ChatMessageType[] }>({ projectId: '', messages: [] })
+  const [sendingNow, setSendingNow] = useState<string | null>(null)
+  const [historyLimit, setHistoryLimit] = useState(HISTORY_PAGE_SIZE)
+  const prependScrollRef = useRef<{ height: number; top: number } | null>(null)
+  const readingStartIdRef = useRef<string | null>(null)
+  const serverQueue = queueState.projectId === currentProject?.id ? queueState.messages : EMPTY_QUEUE
+  const { queued: queuedMessages, visible: visibleMessages } = useMemo(() => chatDisplayMessages(
+    messages, serverQueue, currentProject?.agent?.provider === 'codex',
+  ), [messages, serverQueue, currentProject?.agent?.provider])
+  const readingStartIndex = readingStartIdRef.current ? visibleMessages.findIndex((message) => message.id === readingStartIdRef.current) : -1
+  const hiddenMessageCount = readingStartIndex >= 0 ? readingStartIndex : Math.max(0, visibleMessages.length - historyLimit)
+  const displayedMessages = useMemo(() => visibleMessages.slice(hiddenMessageCount), [visibleMessages, hiddenMessageCount])
+  const displayItems = useMemo(() => groupChatSubagents(displayedMessages, visibleMessages), [displayedMessages, visibleMessages])
+  useEffect(() => {
+    if (currentProject?.agent?.provider !== 'codex') return
+    const projectId = currentProject.id
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+    const refresh = async () => {
+      try {
+        const result = await window.electronAPI.getCodexQueue(projectId)
+        if (active) setQueueState((previous) => previous.projectId === projectId && sameChatQueue(previous.messages, result.messages)
+          ? previous : { projectId, messages: result.messages })
+      } catch { /* Retry while this project remains open. */ }
+      if (active) timer = setTimeout(() => void refresh(), 500)
+    }
+    void refresh()
+    return () => { active = false; clearTimeout(timer) }
+  }, [currentProject?.id, currentProject?.agent?.provider])
+
+  const sendQueuedNow = async (messageId: string) => {
+    if (!currentProject || sendingNow) return
+    const projectId = currentProject.id
+    setSendingNow(messageId)
+    try {
+      await window.electronAPI.sendCodexQueuedNow(projectId, messageId)
+    } catch (error) {
+      if (useAppStore.getState().currentProject === currentProject) setSendError(error instanceof Error ? error.message : String(error))
+    } finally { if (useAppStore.getState().currentProject === currentProject) setSendingNow(null) }
+  }
+  const toolStepCount = useMemo(() => visibleMessages.reduce((count, message) => count + (message.toolCall ? 1 : 0), 0), [visibleMessages])
+  const dialogueCount = useMemo(() => visibleMessages.filter(message => !message.toolCall && !message.subagentTask).length, [visibleMessages])
+
+  useEffect(() => {
+    const viewport = messagesViewportRef.current
+    if (!viewport || !shouldStickToBottomRef.current) return
+    viewport.scrollTop = viewport.scrollHeight
+  }, [messages])
+
+  useLayoutEffect(() => {
+    const viewport = messagesViewportRef.current
+    const previous = prependScrollRef.current
+    if (viewport && previous) viewport.scrollTop = previous.top + viewport.scrollHeight - previous.height
+    prependScrollRef.current = null
+  }, [historyLimit])
+
+  useEffect(() => {
+    shouldStickToBottomRef.current = true
+    prependScrollRef.current = null
+    readingStartIdRef.current = null
+    setHistoryLimit(HISTORY_PAGE_SIZE)
+    setSendError('')
+    setClearError('')
+    setClearConfirmOpen(false)
+    setIsClearingContext(false)
+    setSendingNow(null)
+    const viewport = messagesViewportRef.current
+    if (viewport) viewport.scrollTop = viewport.scrollHeight
+  }, [currentProject?.id])
+
+  const handleSend = async (content: string, attachments?: ChatMessageType['attachments']): Promise<boolean> => {
+    if (!currentProject) throw new Error('当前项目不可用')
+    if (/^\/clear(?:\s|$)/i.test(content.trim())) {
+      setClearError('')
+      setClearConfirmOpen(true)
+      return false
+    }
+    setSendError('')
+    try {
+      await sendChatMessage(content, attachments)
+      return true
+    } catch (error) {
+      if (useAppStore.getState().currentProject === currentProject) {
+        setSendError(`${error instanceof Error ? error.message : '消息发送失败'}。输入内容与附件已保留，可修改后重试。`)
+      }
+      throw error
+    }
+  }
+
+  const switchAgent = async (provider: AgentProvider, model = '') => {
+    if (!currentProject || isAgentThinking || switchingAgent) return
+    const id = currentProject.id
+    setSwitchingAgent(true); setSendError('')
+    try {
+      const project = await window.electronAPI.setProjectAgent(id, { provider, model })
+      useAppStore.setState(state => ({
+        currentProject: state.currentProject?.id === id ? project : state.currentProject,
+        projects: { ...state.projects, projects: state.projects.projects.map(item => item.id === id ? project : item) },
+      }))
+    } catch (error) { if (useAppStore.getState().currentProject?.id === id) setSendError(String(error)) }
+    finally { setSwitchingAgent(false) }
+  }
+
+  const handleClearContext = async () => {
+    if (!currentProject || isAgentThinking || isClearingContext) return
+    setIsClearingContext(true)
+    setClearError('')
+    try {
+      const result = await window.electronAPI.clearAgentContext(currentProject.id)
+      if (useAppStore.getState().currentProject !== currentProject) return
+      if (!result.success) {
+        setClearError(result.error || '新建上下文失败')
+        return
+      }
+      setClearConfirmOpen(false)
+    } catch (error) {
+      if (useAppStore.getState().currentProject === currentProject) setClearError(error instanceof Error ? error.message : String(error))
+    } finally {
+      if (useAppStore.getState().currentProject === currentProject) setIsClearingContext(false)
+    }
+  }
+
+  return (
+    <div className={standalone ? 'studio-chat-panel' : 'relative flex h-full flex-col border-l border-white/[0.08] bg-[#0f0f16]'}>
+      {/* Header */}
+      <div className={standalone ? 'studio-context-toolbar' : 'flex items-center gap-2 border-b border-white/[0.08] px-4 py-3'}>
+        {!standalone && <>
+        <span className="text-[9px] text-[#d4af37]">✦</span>
+        <select aria-label="切换创作助手" disabled={isAgentThinking || switchingAgent || isClearingContext} value={currentProject?.agent?.provider ?? 'claude-code'} onChange={event => void switchAgent(event.target.value as AgentProvider)} className="min-w-0 max-w-[160px] rounded border border-white/10 bg-[#111119] px-1.5 py-1 text-sm text-[#e8e6df] outline-none focus:border-[#d4af37]/60 disabled:opacity-50" title={`${agentLabel(currentProject?.agent)} · ${currentProject?.agent?.model || '默认模型'}`}><option value="relay">唐门创作助手</option><option value="claude-code">Claude Code</option><option value="codex">Codex</option></select>
+        <div className="ml-auto flex items-center gap-1.5 text-[10px] tabular-nums text-[#6d6a78]">
+          <span>{dialogueCount} 条对话</span>
+          {toolStepCount > 0 && (
+            <>
+              <span className="text-white/10">·</span>
+              <span>{toolStepCount} 个步骤</span>
+            </>
+          )}
+        </div>
+        </>}
+        <button
+          type="button"
+          onClick={() => {
+            setClearError('')
+            setClearConfirmOpen(true)
+          }}
+          disabled={!currentProject || isAgentThinking || isClearingContext}
+          className="ml-1 rounded-md border border-white/10 px-2 py-1 text-[10px] text-[#8a8794] transition hover:border-[#d4af37]/40 hover:bg-[#d4af37]/[0.08] hover:text-[#e8c766] disabled:cursor-not-allowed disabled:opacity-40"
+          title={isAgentThinking ? '请等待当前回合结束' : '清空 Agent 上下文，但保留聊天历史和画布'}
+        >
+          新建上下文
+        </button>
+      </div>
+
+      {/* Messages area */}
+      <div
+        ref={messagesViewportRef}
+        onScroll={(event) => {
+          const element = event.currentTarget
+          shouldStickToBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+          // Anchor the loaded range while reading, so appended output cannot
+          // remove its first row and shift the reader's position.
+          readingStartIdRef.current = shouldStickToBottomRef.current ? null : displayedMessages[0]?.id ?? null
+        }}
+        className={standalone ? `studio-message-scroll ${visibleMessages.length ? 'has-messages' : ''}` : 'flex-1 overflow-y-auto p-3'}
+      >
+        {chatHistoryError && (
+          <div className="m-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+            {chatHistoryError}
+          </div>
+        )}
+        {visibleMessages.length === 0 && standalone ? <div className="studio-welcome">
+          <img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" width="44" height="44" />
+          <h2>今天，想创作什么？</h2>
+          <p>一个角色，一段视频，或者一个新想法。</p>
+          <div className="studio-starters">
+            <button type="button" onClick={() => setSuggestion({ id: Date.now(), mode: 'image', prompt: '设计一个原创二次元学习搭档角色，蓝白配色的简洁外套，表情自信友善，全身正面立绘，白色背景，清晰线条，不要文字、水印和现有动漫角色。' })}><StudioIcon name="image" />原创角色<span>开始画图</span></button>
+            <button type="button" onClick={() => setSuggestion({ id: Date.now(), mode: 'video', prompt: '一段教材主题短视频：书本平放在干净的木桌上，镜头缓慢推近，窗外柔和日光照在封面，书页轻轻翻动。保持封面稳定，不添加文字和背景音乐。' })}><StudioIcon name="video" />商品短片<span>开始拍摄</span></button>
+            <button type="button" onClick={() => setSuggestion({ id: Date.now(), mode: 'chat', prompt: '' })}><StudioIcon name="chat" />梳理想法<span>和助手聊聊</span></button>
+          </div>
+        </div> : visibleMessages.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center text-[#6d6a78]">
+            <div className="relative">
+              <div className="absolute inset-0 -m-4 rounded-full bg-[#d4af37]/10 blur-2xl" />
+              <img src={`${import.meta.env.BASE_URL}app-icon.png`} alt="" className="relative h-14 w-14 rounded-2xl opacity-90" />
+            </div>
+            <h2 className={`mt-5 text-[#e8c766] ${standalone ? 'text-2xl font-semibold' : 'font-display text-sm tracking-[0.25em]'}`}>{standalone ? '把想法说出来' : '唐门AI'}</h2>
+            <p className={`mt-2 text-center leading-relaxed ${standalone ? 'max-w-md text-sm text-[#b8b4c2]' : 'max-w-[220px] text-xs text-[#6d6a78]'}`}>
+              {standalone ? '从选题、脚本到资料整理，告诉我你现在想完成什么。' : '我是你的 AIGC 创作助手，可以帮你生成分镜、编写脚本、分析文件等。'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-0.5">
+            {hiddenMessageCount > 0 && (
+              <button type="button" onClick={() => {
+                const viewport = messagesViewportRef.current
+                if (viewport) prependScrollRef.current = { height: viewport.scrollHeight, top: viewport.scrollTop }
+                shouldStickToBottomRef.current = false
+                readingStartIdRef.current = visibleMessages[Math.max(0, hiddenMessageCount - HISTORY_PAGE_SIZE)]?.id ?? null
+                setHistoryLimit((limit) => limit + HISTORY_PAGE_SIZE)
+              }} className="mb-3 w-full rounded-lg border border-white/10 py-2 text-xs text-[#8a8794] hover:bg-white/5">
+                加载更早的 {Math.min(HISTORY_PAGE_SIZE, hiddenMessageCount)} 条消息（还有 {hiddenMessageCount} 条）
+              </button>
+            )}
+            {displayItems.map((item) => item.kind === 'subagent'
+              ? <ChatSubagentGroup key={`subagent:${item.id}`} group={item} />
+              : <div key={item.message.id}>
+                  {item.message.deliveryStatus === 'cancelled' && <p className="px-3 pt-2 text-right text-[10px] text-[#8a8794]">已取消发送</p>}
+                  {item.message.media ? <ChatMediaCard media={item.message.media} onPreviewReady={() => { const viewport = messagesViewportRef.current; if (viewport && shouldStickToBottomRef.current) viewport.scrollTop = viewport.scrollHeight }} onReuse={standalone ? media => setSuggestion({ id: Date.now(), mode: media.kind, prompt: media.prompt, media }) : undefined} /> : <ChatMessageItem message={item.message} />}
+                </div>)}
+            {isAgentThinking && (
+              <div className="flex gap-2 py-2">
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border border-[#d4af37]/30 bg-[#d4af37]/10 text-[10px] font-medium text-[#e8c766]">
+                  AI
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5">
+                  <div className="flex items-center gap-1">
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8a8794] [animation-delay:-0.3s]" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8a8794] [animation-delay:-0.15s]" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#8a8794]" />
+                  </div>
+                  <button
+                    onClick={() => currentProject && void window.electronAPI.interruptAgent(currentProject.id)}
+                    className="ml-1 rounded-md border border-white/10 px-2 py-0.5 text-[10px] text-[#8a8794] transition hover:border-rose-400/40 hover:text-rose-300"
+                    title={currentProject?.agent?.provider === 'relay' ? '停止当前回合' : currentProject?.agent?.provider === 'codex' ? '停止当前回合并清空待发送队列' : '打断当前回合（已排队的消息仍会执行）'}
+                  >
+                    停止
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Input area */}
+      <div className={standalone ? 'studio-input-area' : 'border-t border-white/[0.08]'}>
+        {currentProject?.agent?.provider === 'codex' && queuedMessages.length > 0 && (
+          <section aria-label="待发送消息" className="mx-3 mt-2 rounded-lg border border-[#d4af37]/20 bg-[#17161f] p-2">
+            <div className="mb-1 flex items-center justify-between px-1 text-[11px] text-[#8a8794]"><span>待发送 · {queuedMessages.length}</span><span>当前回合结束后按顺序发送</span></div>
+            <ul className="max-h-36 overflow-y-auto">
+              {queuedMessages.map(message => <li key={message.id} className="flex items-center gap-2 border-t border-white/5 py-2">
+                <div className="min-w-0 flex-1 px-1"><p className="line-clamp-2 whitespace-pre-wrap break-words text-xs text-[#e8e6df]">{message.content || '附件消息'}</p>{!!message.attachments?.length && <p className="mt-1 truncate text-[10px] text-[#8a8794]">{message.attachments.map(attachment => attachment.name).join('、')}</p>}</div>
+                <button type="button" disabled={!!sendingNow} onClick={() => void sendQueuedNow(message.id)} title="中断当前回合，优先发送这条消息并继续任务" className="shrink-0 rounded-md border border-[#d4af37]/30 px-2 py-1 text-xs text-[#e8c766] hover:bg-[#d4af37]/10 disabled:opacity-40">{sendingNow === message.id ? '中断中…' : '立即发送'}</button>
+              </li>)}
+            </ul>
+          </section>
+        )}
+        {sendError && (
+          <div className="mx-3 mt-2 rounded-lg border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
+            {sendError}
+          </div>
+        )}
+        {standalone ? <StudioComposer suggestion={suggestion} onSend={handleSend} disabled={!currentProject || isClearingContext || switchingAgent} agentBusy={isAgentThinking} onAgentChange={(agent: ProjectAgentConfig) => switchAgent(agent.provider, agent.model)} /> : <ChatInput onSend={handleSend} disabled={!currentProject || isClearingContext || switchingAgent || (currentProject.agent?.provider === 'relay' && isAgentThinking)} />}
+      </div>
+
+      {clearConfirmOpen && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/65 p-5 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-context-title"
+            className="w-full max-w-sm rounded-2xl border border-[#d4af37]/30 bg-[#17161f] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl border border-[#d4af37]/30 bg-[#d4af37]/10 text-[#e8c766]">✦</div>
+              <div>
+                <h4 id="clear-context-title" className="text-sm font-medium text-[#e8e6df]">新建 Agent 上下文？</h4>
+                <p className="mt-2 text-xs leading-5 text-[#8a8794]">
+                  Agent 将无法访问分界线之前的对话。聊天历史和画布内容会继续保留，不会删除任何项目文件。
+                </p>
+              </div>
+            </div>
+
+            {clearError && (
+              <div className="mt-4 rounded-lg border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
+                {clearError}
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setClearConfirmOpen(false)}
+                disabled={isClearingContext}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-[#9b98a5] transition hover:bg-white/5 hover:text-[#e8e6df] disabled:opacity-40"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleClearContext()}
+                disabled={isClearingContext || isAgentThinking}
+                className="rounded-lg border border-[#d4af37]/40 bg-[#d4af37]/15 px-3 py-1.5 text-xs text-[#e8c766] transition hover:bg-[#d4af37]/25 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isClearingContext ? '正在新建…' : '确认新建'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

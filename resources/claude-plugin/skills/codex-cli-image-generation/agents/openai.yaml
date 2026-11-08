@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex CLI 生图"
+  short_description: "先建画布图片节点，再用 Codex CLI 出图并写回"
+  default_prompt: "Use $codex-cli-image-generation to create a canvas image node first, generate its PNG with Codex CLI, and update that node with the project-local image path."

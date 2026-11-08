@@ -1,0 +1,200 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: Georgia, "Songti SC", "SimSun", serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html {
+    min-width: 320px;
+    min-height: 100%;
+    background: #0a0a0f;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(ellipse 90% 55% at 50% -10%, rgba(212, 175, 55, 0.06), transparent 60%),
+      radial-gradient(ellipse 55% 45% at 100% 100%, rgba(127, 29, 45, 0.07), transparent 60%),
+      radial-gradient(ellipse 45% 40% at 0% 90%, rgba(58, 48, 20, 0.12), transparent 60%),
+      #0a0a0f;
+    background-attachment: fixed;
+    color: #e8e6df;
+  }
+
+  #root {
+    min-height: 100vh;
+    background: transparent;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button:focus-visible, [role="separator"]:focus-visible {
+    outline: 2px solid #d4af37;
+    outline-offset: 3px;
+  }
+
+  code {
+    border-radius: 0.375rem;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.125rem 0.375rem;
+    color: #f0d98c;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.22) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.45);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Custom window title bar drag regions */
+  .app-drag {
+    -webkit-app-region: drag;
+  }
+
+  .app-no-drag {
+    -webkit-app-region: no-drag;
+  }
+}
+
+/* React Flow storyboard canvas */
+.react-flow {
+  --xy-background-color: #0a0a0f;
+  --xy-edge-stroke: #8aa5c2;
+  --xy-edge-stroke-selected: #e8c766;
+  --xy-connectionline-stroke: #e8c766;
+  --xy-selection-background-color: rgba(212, 175, 55, 0.08);
+  --xy-selection-border: 1px solid rgba(212, 175, 55, 0.55);
+  background: #0a0a0f;
+}
+
+.react-flow__node-storyNode {
+  border: 0;
+  background: transparent;
+}
+
+.react-flow.canvas-select-mode .react-flow__pane {
+  cursor: default;
+}
+
+.react-flow.canvas-pan-mode .react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow.canvas-pan-mode .react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.react-flow__selection {
+  border: 1px solid rgba(232, 199, 102, 0.8);
+  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.08) inset;
+}
+
+.story-handle.react-flow__handle {
+  z-index: 20;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: #17171b;
+  box-shadow: 0 0 0 3px rgba(10, 10, 15, 0.75);
+  transition: border-color 150ms, background-color 150ms, transform 150ms;
+}
+
+.story-handle.react-flow__handle-left:hover {
+  transform: translate(-50%, -50%) scale(1.18);
+}
+
+.story-handle.react-flow__handle-right:hover {
+  transform: translate(50%, -50%) scale(1.18);
+}
+
+.story-handle.react-flow__handle::after {
+  content: '+';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.story-handle.react-flow__handle:hover {
+  border-color: #e8c766;
+  background: #3b3420;
+}
+
+.react-flow__controls,
+.react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(23, 23, 27, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.react-flow__controls-button {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Isolate the changing SVG minimap mask from the large graph's raster layer. */
+.react-flow__minimap {
+  contain: layout paint;
+  transform: translateZ(0);
+}

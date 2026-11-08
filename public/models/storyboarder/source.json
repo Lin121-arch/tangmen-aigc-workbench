@@ -1,0 +1,42 @@
+{
+  "repo": "wonderunit/shot-generator-models",
+  "commit": "8195e380179561c04bcd1b5ed4a772c305245dff",
+  "files": [
+    {
+      "path": "LICENSE",
+      "file": "LICENSE",
+      "bytes": 1068,
+      "sha256": "4e921f8eff72320872157d37120811d599fe32de0779716e61c760692fb97f65"
+    },
+    {
+      "path": "README.md",
+      "file": "README.md",
+      "bytes": 5891,
+      "sha256": "a3a262a758979ef09d716636b244eadd1aad174ebe372bb5d82687ed33315c3a"
+    },
+    {
+      "path": "characters/essential/adult-male/adult-male-lod.glb",
+      "file": "adult-male-lod.glb",
+      "bytes": 1303448,
+      "sha256": "40209311bbd21000a8f0ab46ce4fcb361852f492c3faff4911231eed90db843d"
+    },
+    {
+      "path": "characters/essential/adult-female/adult-female-lod.glb",
+      "file": "adult-female-lod.glb",
+      "bytes": 2044412,
+      "sha256": "95782948eebc95c9c7784db98cc0c58cd7c38715f879a9956b0281310e59bb81"
+    },
+    {
+      "path": "characters/essential/teen-male/teen-male-lod.glb",
+      "file": "teen-male-lod.glb",
+      "bytes": 1981332,
+      "sha256": "bb8c0fc2389bfbbbc1a6b92d73f024245baa6cb0096260161ba63f327af1d355"
+    },
+    {
+      "path": "characters/essential/teen-female/teen-female-lod.glb",
+      "file": "teen-female-lod.glb",
+      "bytes": 1969388,
+      "sha256": "2432ff485efce06906ef287b84281b5baffac543dd6bf9b5471f6ea124302fa5"
+    }
+  ]
+}

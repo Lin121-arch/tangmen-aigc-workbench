@@ -1,0 +1,73 @@
+import { useEffect, useRef } from 'react';
+import { useAppStore } from './stores/app.store';
+import { HomePage } from './pages/HomePage';
+import { ProjectPage } from './pages/ProjectPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ChatPage } from './pages/ChatPage';
+import { TitleBar } from './components/TitleBar';
+import { beginEditBarrier, flushPendingEdits, UnsavedSettingsError } from './shared/pending-edits';
+
+function App() {
+  const releaseCloseRef = useRef<(() => void) | undefined>(undefined);
+  const startupRef = useRef(false);
+  const currentPage = useAppStore((state) => state.currentPage);
+  const loadProjects = useAppStore((state) => state.loadProjects);
+
+  useEffect(() => {
+    // Wait for the committed React UI to paint before fading out the preload screen.
+    let paintedFrame = 0;
+    const frame = requestAnimationFrame(() => {
+      paintedFrame = requestAnimationFrame(() => window.postMessage({ payload: 'removeLoading' }, '*'));
+    });
+    return () => { cancelAnimationFrame(frame); cancelAnimationFrame(paintedFrame); };
+  }, []);
+
+  useEffect(() => {
+    if (startupRef.current) return;
+    startupRef.current = true;
+    void (async () => {
+      await loadProjects({ restoreLastOpened: true });
+      const state = useAppStore.getState();
+      if (state.currentPage === 'chat' && !state.currentProject) {
+        const project = await window.electronAPI.createConversation({ provider: 'codex', model: '' });
+        await state.loadProjects();
+        if (useAppStore.getState().currentPage === 'chat' && !useAppStore.getState().currentProject) await state.selectProject(project.id, 'chat');
+      }
+    })().catch(error => useAppStore.setState({ chatHistoryError: error instanceof Error ? error.message : String(error) }));
+  }, [loadProjects]);
+
+  useEffect(() => window.electronAPI.onBeforeClose(async ({ requestId, settingsAction }) => {
+    releaseCloseRef.current?.();
+    releaseCloseRef.current = beginEditBarrier();
+    try {
+      await flushPendingEdits({ settingsAction });
+      window.electronAPI.confirmClose({ requestId, success: true });
+    } catch (error) {
+      releaseCloseRef.current?.();
+      releaseCloseRef.current = undefined;
+      window.electronAPI.confirmClose({ requestId, success: false, error: error instanceof Error ? error.message : String(error), unsavedSettings: error instanceof UnsavedSettingsError });
+    }
+  }), []);
+  useEffect(() => window.electronAPI.onCloseCancelled(() => {
+    releaseCloseRef.current?.(); releaseCloseRef.current = undefined;
+  }), []);
+
+  return (
+    <div className='flex h-screen flex-col overflow-hidden bg-[#0a0a0f] text-[#e8e6df]'>
+      <TitleBar />
+      <div className='min-h-0 flex-1'>
+        {currentPage === 'home' ? (
+          <HomePage />
+        ) : currentPage === 'chat' ? (
+          <ChatPage />
+        ) : currentPage === 'settings' ? (
+          <SettingsPage />
+        ) : (
+          <ProjectPage />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;

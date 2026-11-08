@@ -1,0 +1,79 @@
+import path from 'node:path';
+import type { ChatMessage } from '../../../../src/shared/ipc.types';
+import { DIRECTOR_PRIMITIVE_KINDS } from '../../../../src/shared/director-element-catalog';
+
+/**
+ * Build the user prompt for the current turn.
+ * Attachments are listed as workspace-relative paths so the agent can
+ * inspect them with Read/Bash; system instructions live in the system prompt.
+ */
+export function buildUserPrompt(userMessage: ChatMessage, folderPath: string): string {
+  const contextBlocks: string[] = [];
+
+  if (userMessage.nodeRefs && userMessage.nodeRefs.length > 0) {
+    const refLines = userMessage.nodeRefs
+      .map((ref) => `- nodeId=${JSON.stringify(ref.id)} title=${JSON.stringify(ref.title)} kind=${ref.kind}`)
+      .join('\n');
+    contextBlocks.push(`用户把以下实时画布节点添加到了本轮对话。它们是本轮修改或讨论的明确对象：\n${refLines}\n\n处理规则：直接用上述精确 nodeId 调用 GetCanvasNode 读取节点的完整最新数据，不要先读取全画布概览；修改时使用相同 nodeId 调用 UpdateCanvasNodes。画布写入采用最后写入者生效，不需要传版本号。除非用户明确要求，不要把它们替换成新节点，也不要修改未引用的节点。`);
+  }
+
+  if (userMessage.artifactRefs && userMessage.artifactRefs.length > 0) {
+    const refLines = userMessage.artifactRefs
+      .map((r) => `- 《${r.title}》(${r.type})${r.path ? ` at ${r.path}` : ''}`)
+      .join('\n');
+    contextBlocks.push(`用户选择了以下产物作为本轮消息的引用（说明用户想修改它或参考它；如需修改，直接用 Read/Edit 操作对应文件，改完调用 PushArtifact 重新推送即可，前端会原地更新卡片而不是新增）：\n${refLines}`);
+  }
+
+  if (userMessage.attachments && userMessage.attachments.length > 0) {
+    const attachmentLines = userMessage.attachments
+      .map((a) => {
+        // Prefer workspace-relative paths (staged under uploads/)
+        const rel = a.path ? path.relative(folderPath, a.path) : '';
+        const location = rel && !rel.startsWith('..') && !path.isAbsolute(rel)
+          ? rel.split(path.sep).join('/')
+          : a.path;
+        return `- name=${JSON.stringify(a.name)} type=${JSON.stringify(a.type)}${location ? ` path=${JSON.stringify(location)}` : ''}`;
+      })
+      .join('\n');
+    contextBlocks.push(`用户上传了以下文件。路径均位于当前项目工作区内；按用户要求使用 Read、Bash 或适合该媒体类型的工具读取，不要猜测文件内容：\n${attachmentLines}`);
+  }
+
+  const content = userMessage.content.trim();
+  // A slash command must remain the first token so Claude Code invokes the
+  // selected skill. Reference and attachment context becomes skill arguments.
+  return content.startsWith('/')
+    ? [content, ...contextBlocks].filter(Boolean).join('\n\n')
+    : [...contextBlocks, content].filter(Boolean).join('\n\n');
+}
+
+/**
+ * Appended to the claude_code preset system prompt: workspace location and
+ * how to show chat artifacts and explicitly create canvas nodes.
+ */
+export function buildSystemPromptAppend(folderPath: string): string {
+  return `你的工作目录是：${folderPath}
+
+你运行在 AIGC CANVAS 桌面应用中。不要建议用户运行 claude、claude --resume 或其他 Claude Code 终端命令；会话和上下文操作由应用界面负责。
+
+当你完成的任务产出了有意义的结果时（比如编写代码、生成报告、制作可视化页面等），可以使用 PushArtifact 工具在聊天区展示：图片、Markdown、HTML 和文本/代码均显示为轻量卡片，用户点击后在弹窗查看。PushArtifact 不创建或更新任何画布节点；需要把图片放到画布时，明确调用 CreateCanvasNodes 创建 image 节点并设置项目内 sourcePath，已有节点则调用 UpdateCanvasNodes。先把结果写入工作目录中的文件，然后再调用 PushArtifact 并传入文件路径——内容会直接从磁盘读取，所以不要把内容粘贴到工具调用的参数里。PushArtifact 工具的参数如下：
+- path：项目内文件路径（相对或绝对路径均可）。图片、.md/.markdown、.html/.htm 和常用 UTF-8 文本/代码只生成聊天产物卡片，点击后弹窗预览。文本上限 1 MB，图片上限 20 MB。不支持 PDF/Office/压缩包等二进制文件；视频/音频使用 CreateCanvasNodes 的 video/audio 和 sourcePath。
+- title：artifact 的简短标题
+- width / height：旧版预览尺寸兼容参数，可以省略；聊天阅读弹窗自适应窗口。相同文件重新推送后，聊天卡片打开最新内容；修改时编辑源文件后重新推送。已存在的画布图片节点不会随 PushArtifact 自动更新，需要时明确调用 UpdateCanvasNodes。
+
+例如，把报告写入 report.md 之后，调用 PushArtifact 并传入 path="report.md"、title="报告"。
+
+当 HTML artifact 需要引用项目内文件时，使用相对于 HTML 源文件所在目录的路径（例如 generated/report.html 用 ../uploads/photo.png）。HTML 在隔离 iframe 内运行，可执行脚本但不能访问应用或 Electron API；不要依赖同源权限、顶层导航、弹窗或本地存储。不要把大体积资源以 base64 data URL 内联。
+
+你具备 AIGC 短剧分镜创作能力，并且可以通过 Canvas 工具直接读取和修改实时画布。需要了解画布规模或查找节点 ID 时调用 GetCanvasOverview，它只返回轻量摘要；需要某个节点的 prompt、媒体路径、生成状态、引用或连接详情时，用精确 nodeId 调用 GetCanvasNode。用户已经引用节点时直接读取该节点，不要先获取全画布概览。画布写入采用最后写入者生效，不要传版本号。
+
+当用户要求操作 3D 导演台时，先调用 GetCanvasCapabilities 获取 director 的原子动作。人物、场景素材、Shot、人物路径、相机约束和关键帧优先使用对应 InvokeNodeAction，不要为了小改动重写完整 directorProject。用户要求按参考图搭建简易 3D 场景时，先用 GetCanvasNode 取得图片节点的项目内 sourcePath，再用 Read 读取图片并通过你当前的多模态能力理解空间；然后对 director 节点调用 apply-scene-draft，params 传图片节点 referenceNodeId 和符合能力描述的严格 draft。只使用 ${DIRECTOR_PRIMITIVE_KINDS.join('、')}，最多 40 个素材；优先用专用类型表达地面、高台、楼梯、斜坡、门窗、桌椅、沙发、床、柜子和栏杆，不要创建人物，不要调用其他视觉模型。草案中每个素材必须声明 placement：地面、道路、建筑主体、围墙、落地家具等选择 ground，窗框、屋顶、横梁、招牌等确实离地的结构选择 elevated。导演台的 transform.position 是素材底面锚点，transform.scale 是完整宽/高/深（米）；ground 的 y 会被写入层强制归零，elevated 的 y 表示底面离地高度。门窗框保留真实开口，不要在开口处叠加实心墙体。完成后用 GetCanvasNode 核对结果，重点检查 ground 元素的 position.y 均为 0。
+
+当用户要总结、转写、提取、计数、比较、检查或按其他自定义要求分析任意视频时，调用 AnalyzeVideo，传入项目内视频路径或公开 http(s) 视频地址及完整、具体的分析要求。它会顺序扫描全片，联合理解画面、可见文字、对白、音乐、环境声和音效，区分观察、转写与推断，并用时间戳和不确定性说明支撑关键结论。不要为了视频分析创建或查找画布节点；如果用户指向 video 节点，先用 GetCanvasNode 取得 sourcePath，再把该路径传给 AnalyzeVideo。
+
+当用户要求从剧本、梗概、对白或创意创作短剧、编写分镜、拆分镜头、编写导演包或修复连续性时，使用内置 script-to-drama-video Skill；它统一负责节拍、人物调度、切镜理由、连续性账本和专项 Skill 委派。只有用户明确指定现有节点并要求局部修改时，才可直接读取并修改该范围。不要创建 .storyboard.json 或分镜表 artifact，也不要创建独立的分镜/shot 节点。画布生产结构为：
+1. 为每个需要静帧、首帧或视觉参考的生成片段创建 image 节点，prompt 使用详细图片提示词。
+2. 为每个可独立生成和审核的片段创建 video 节点，prompt 承载片段目的、内部 Shot 时间线、动作、运镜、台词和声音，并设置 duration。
+3. 使用 ConnectCanvasNodes 建立 image → video 的连接；剧情规划、旁白、时间线和生成要求直接写入对应 image/video 的 prompt，不创建额外文本节点。
+
+优先批量创建和批量连接。不同生成片段纵向排列，同一片段的参考图和视频从左到右排列。画布节点是生产数据的唯一来源。`;
+}

@@ -1,0 +1,137 @@
+import { ipcMain, dialog, shell } from 'electron';
+import { normalizeTemplateModels } from '../../../src/shared/template-models';
+import { listComfyWorkflows } from '../services/comfyui.service';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { IPC_CHANNELS } from '../../../src/shared/ipc.channels';
+import {
+  createProject,
+  createConversation,
+  listProjects,
+  searchProjects,
+  loadProject,
+  closeProject,
+  deleteProject,
+  setLastOpened,
+  readManifest,
+  setProjectAgent,
+} from '../services/project.store';
+import { importProjectMediaFiles, listProjectMediaAssets } from '../services/project-media.service';
+import type { ProjectPageQuery } from '../../../src/shared/ipc.types';
+import { isAgentBusy } from '../services/agent/session-manager';
+
+export function registerProjectHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.project.createConversation, (_event, agent: unknown) => createConversation(agent));
+  ipcMain.handle(IPC_CHANNELS.project.setAgent, async (_event, id: string, agent: unknown) => {
+    if (isAgentBusy(id)) throw new Error('请等待当前回合结束后再切换助手');
+    return setProjectAgent(id, agent);
+  });
+  ipcMain.handle(
+    IPC_CHANNELS.project.create,
+    async (_event, name: string, folderPath: string, agent: unknown, templateId?: unknown, templateModels?: unknown) => {
+      const models = templateModels === undefined ? undefined : normalizeTemplateModels(templateModels, await listComfyWorkflows());
+      return createProject(name, folderPath, agent, templateId, models);
+    },
+  );
+
+  ipcMain.handle(IPC_CHANNELS.project.list, async () => {
+    return listProjects();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.search, async (_event, query: ProjectPageQuery) => searchProjects(query));
+
+  ipcMain.handle(IPC_CHANNELS.project.load, async (_event, id: string) => {
+    const project = await loadProject(id);
+    if (project) {
+      await setLastOpened(id);
+    }
+    return project;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.close, async (_event, id: string) => {
+    await closeProject(id);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.delete, async (_event, id: string) => {
+    await deleteProject(id);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.importAudio, async (_event, projectId: string) => {
+    try {
+      const project = await loadProject(projectId);
+      if (!project) return { success: false, error: '项目不存在或已被删除' };
+      const result = await dialog.showOpenDialog({
+        title: '选择本地音频',
+        properties: ['openFile'],
+        filters: [
+          { name: '音频文件', extensions: ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac'] },
+        ],
+      });
+      if (result.canceled || !result.filePaths[0]) return { success: false, canceled: true };
+
+      const sourcePath = path.resolve(result.filePaths[0]);
+      const extension = path.extname(sourcePath).toLowerCase();
+      if (!['.mp3', '.wav', '.m4a', '.flac', '.ogg', '.aac'].includes(extension)) {
+        return { success: false, error: '不支持的音频格式' };
+      }
+      const destinationDir = path.join(project.folderPath, 'uploads', 'audio');
+      await fs.mkdir(destinationDir, { recursive: true });
+      const originalName = path.basename(sourcePath);
+      const safeBase = path.basename(originalName, extension).replace(/[^\p{L}\p{N}._-]+/gu, '-').slice(0, 80) || 'audio';
+      const destinationPath = path.join(destinationDir, `${Date.now()}-${safeBase}${extension}`);
+      await fs.copyFile(sourcePath, destinationPath);
+      return {
+        success: true,
+        name: originalName,
+        relativePath: path.relative(project.folderPath, destinationPath).split(path.sep).join('/'),
+      };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.importMedia, async (_event, projectId: string) => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: '上传图片、视频或音频到画布',
+        properties: ['openFile', 'multiSelections'],
+        filters: [
+          { name: '媒体文件', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif', 'mp4', 'webm', 'mov', 'mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac'] },
+          { name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif'] },
+          { name: '视频', extensions: ['mp4', 'webm', 'mov'] },
+          { name: '音频', extensions: ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'aac'] },
+        ],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true, assets: [] };
+      }
+      return { success: true, assets: await importProjectMediaFiles(projectId, result.filePaths) };
+    } catch (error) {
+      return { success: false, assets: [], error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.project.listMedia, async (_event, projectId: string) => {
+    try {
+      return { success: true, assets: await listProjectMediaAssets(projectId) };
+    } catch (error) {
+      return { success: false, assets: [], error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('manifest:read', async (_event, folderPath: string) => {
+    return readManifest(folderPath);
+  });
+
+  ipcMain.handle('dialog:showOpenDialog', async (_event, options) => {
+    const result = await dialog.showOpenDialog({
+      ...options,
+      properties: ['openDirectory'],
+    });
+    return result.filePaths;
+  });
+
+  ipcMain.on('shell:showItemInFolder', (_event, filePath: string) => {
+    shell.showItemInFolder(filePath);
+  });
+}

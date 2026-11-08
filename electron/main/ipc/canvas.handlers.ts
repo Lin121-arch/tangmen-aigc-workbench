@@ -1,0 +1,132 @@
+import { ipcMain, dialog } from 'electron';
+import { importDirectorModel } from '../services/director-model-import';
+import { IPC_CHANNELS } from '../../../src/shared/ipc.channels';
+import * as projectStore from '../services/project.store';
+import log from 'electron-log/main';
+import type { CanvasCommandResponse, SaveBoardPreviewRequest, SaveBoardPreviewResult, SaveImageEditRequest, SaveImageEditResult } from '../../../src/shared/ipc.types';
+import type { SaveDirectorStillRequest, SaveDirectorStillResult, SaveDirectorVideoRequest, SaveDirectorVideoResult } from '../../../src/shared/director.types';
+import { resolveCanvasCommand } from '../services/agent/canvas-bridge';
+import { saveBoardPreview, saveDirectorStill, saveDirectorVideo, saveImageEdit } from '../services/project-media.service';
+
+export function registerCanvasHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.canvas.importDirectorModel, async (_event, projectId: string) => {
+    try {
+      if (typeof projectId !== 'string') throw new Error('无效项目')
+      const result = await dialog.showOpenDialog({ title: '导入3D模型（完整GLB）', properties: ['openFile'], filters: [{ name: 'GLB模型', extensions: ['glb'] }] });
+      if (result.canceled || !result.filePaths[0]) return { success: false, canceled: true };
+      return { success: true, ...await importDirectorModel(projectId, result.filePaths[0]) };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : String(error) }; }
+  });
+  ipcMain.on(
+    IPC_CHANNELS.canvas.commandResult,
+    (_event, response: CanvasCommandResponse) => resolveCanvasCommand(response),
+  );
+  // Save canvas snapshot to project folder
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.save,
+    async (_event, folderPath: string, snapshot: unknown) => {
+      try {
+        await projectStore.writeCanvasSnapshot(folderPath, snapshot);
+        return { success: true };
+      } catch (err) {
+        log.error('[Canvas] save failed:', err);
+        throw err;
+      }
+    },
+  );
+
+  // Load canvas snapshot from project folder
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.load,
+    async (_event, folderPath: string) => {
+      try {
+        const snapshot = await projectStore.readCanvasSnapshot(folderPath);
+        return snapshot;
+      } catch (err) {
+        log.error('[Canvas] load failed:', err);
+        throw err;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.saveDirectorStill,
+    async (_event, request: SaveDirectorStillRequest): Promise<SaveDirectorStillResult> => {
+      try {
+        const relativePath = await saveDirectorStill(
+          request.projectId,
+          request.nodeId,
+          request.shotId,
+          request.shotName,
+          request.pngData,
+        );
+        return { success: true, relativePath };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error('[Canvas] director still save failed:', message);
+        return { success: false, error: message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.saveImageEdit,
+    async (_event, request: SaveImageEditRequest): Promise<SaveImageEditResult> => {
+      try {
+        const relativePath = await saveImageEdit(
+          request.projectId,
+          request.nodeId,
+          request.inputNodeId,
+          request.pngData,
+          request.width,
+          request.height,
+        );
+        return { success: true, relativePath };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error('[Canvas] image edit save failed:', message);
+        return { success: false, error: message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.saveBoardPreview,
+    async (_event, request: SaveBoardPreviewRequest): Promise<SaveBoardPreviewResult> => {
+      try {
+        const relativePath = await saveBoardPreview(
+          request.projectId,
+          request.nodeId,
+          request.pngData,
+          request.width,
+          request.height,
+        );
+        return { success: true, relativePath };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error('[Canvas] board preview save failed:', message);
+        return { success: false, error: message };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.canvas.saveDirectorVideo,
+    async (_event, request: SaveDirectorVideoRequest): Promise<SaveDirectorVideoResult> => {
+      try {
+        const relativePath = await saveDirectorVideo(
+          request.projectId,
+          request.nodeId,
+          request.shotId,
+          request.shotName,
+          request.webmData,
+        );
+        return { success: true, relativePath };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        log.error('[Canvas] director video save failed:', message);
+        return { success: false, error: message };
+      }
+    },
+  );
+}
