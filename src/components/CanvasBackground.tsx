@@ -19,7 +19,7 @@ export const CanvasBackground = memo(function CanvasBackground() {
         style.backgroundSize = `${gap}px ${gap}px`
         style.backgroundPosition = `${-gap / 2}px ${-gap / 2}px`
         const radius = zoom / 2
-        style.backgroundImage = `radial-gradient(circle, rgba(255,255,255,0.16) ${radius}px, transparent ${radius}px)`
+        style.backgroundImage = `radial-gradient(circle, var(--canvas-dot, rgba(255,255,255,0.16)) ${radius}px, transparent ${radius}px)`
         style.left = style.top = `${-2 * gap}px`
         style.width = style.height = `calc(100% + ${4 * gap}px)`
       }

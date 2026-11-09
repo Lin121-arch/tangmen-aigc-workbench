@@ -1,0 +1,336 @@
+/* Appearance is independent of provider configuration and creative content.
+   Legacy utility bridge below keeps existing dark styles intact. New UI should use these roles. */
+:root {
+  --ui-page: #0a0a0f;
+  --ui-surface: #17171b;
+  --ui-soft: #242429;
+  --ui-hover: #303035;
+  --ui-text: #e8e6df;
+  --ui-secondary: #b8b4c2;
+  --ui-muted: #9693a1;
+  --ui-accent: #e8c766;
+  --ui-border: #37373d;
+  --ui-accent-border: #857047;
+  --ui-danger: #f2b9b0;
+  --ui-success: #6ee7b7;
+  --ui-info: #7dd3fc;
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --ui-page: #f5f5f3;
+  --ui-surface: #ffffff;
+  --ui-soft: #eceef0;
+  --ui-hover: #e4e6e9;
+  --ui-text: #252830;
+  --ui-secondary: #515762;
+  --ui-muted: #656b75;
+  --ui-accent: #795609;
+  --ui-border: #d5d8de;
+  --ui-accent-border: #b39a5c;
+  --ui-danger: #aa2d3b;
+  --ui-success: #176b48;
+  --ui-info: #1d618c;
+  --canvas-dot: #b2b8c2;
+  background: var(--ui-page);
+}
+html[data-theme="light"] body { background: var(--ui-page); color: var(--ui-text); }
+.theme-toggle { display:inline-flex; height:30px; align-items:center; gap:7px; padding:0 10px; flex-shrink:0; border:1px solid var(--ui-border); border-radius:6px; color:var(--ui-secondary); background:transparent; cursor:pointer; font-size:12px; }
+.theme-toggle:hover { color:var(--ui-text); background:var(--ui-soft); }
+.theme-toggle:focus-visible { outline:2px solid var(--ui-accent); outline-offset:2px; }
+html[data-theme="light"] ::selection { background:#ead9a7; color:#252830; }
+html[data-theme="light"] :is(input,textarea) { caret-color:var(--ui-accent); }
+html[data-theme="light"] :is(input,textarea)::placeholder { color:var(--ui-muted); }
+html[data-theme="light"] :is(button,input,textarea,select,[role="separator"]):focus-visible { outline-color:var(--ui-accent); }
+html[data-theme="light"] code { background:var(--ui-soft); border-color:var(--ui-border); color:var(--ui-accent); }
+html[data-theme="light"] * { scrollbar-color:#a6adb7 transparent; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb { background:#a6adb7; }
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background:#747d8b; }
+
+/* Explicit compatibility with the incumbent utility palette, including interaction states. */
+html[data-theme="light"] .bg-\[\#08080c\],
+html[data-theme="light"] .bg-\[\#09090e\],
+html[data-theme="light"] .bg-\[\#09090f\],
+html[data-theme="light"] .bg-\[\#090a0e\],
+html[data-theme="light"] .bg-\[\#0a0a0f\],
+html[data-theme="light"] .bg-\[\#0a0a0f\]\/95 { background-color: var(--ui-page); }
+
+html[data-theme="light"] .bg-\[\#0b0c10\],
+html[data-theme="light"] .bg-\[\#0d0d14\],
+html[data-theme="light"] .bg-\[\#0d0e12\],
+html[data-theme="light"] .bg-\[\#0d0f14\],
+html[data-theme="light"] .bg-\[\#0f0f16\],
+html[data-theme="light"] .bg-\[\#101014\]\/75,
+html[data-theme="light"] .bg-\[\#10131b\],
+html[data-theme="light"] .bg-\[\#10141d\],
+html[data-theme="light"] .bg-\[\#111117\],
+html[data-theme="light"] .bg-\[\#111118\],
+html[data-theme="light"] .bg-\[\#111119\],
+html[data-theme="light"] .bg-\[\#111217\],
+html[data-theme="light"] .bg-\[\#111318\],
+html[data-theme="light"] .bg-\[\#121219\],
+html[data-theme="light"] .bg-\[\#12121b\],
+html[data-theme="light"] .bg-\[\#121318\],
+html[data-theme="light"] .bg-\[\#121318\]\/85,
+html[data-theme="light"] .bg-\[\#121318\]\/90,
+html[data-theme="light"] .bg-\[\#121318\]\/95,
+html[data-theme="light"] .bg-\[\#121419\],
+html[data-theme="light"] .bg-\[\#14161b\],
+html[data-theme="light"] .bg-\[\#141822\],
+html[data-theme="light"] .bg-\[\#15141d\]\/98,
+html[data-theme="light"] .bg-\[\#151519\]\/98,
+html[data-theme="light"] .bg-\[\#15161d\]\/98,
+html[data-theme="light"] .bg-\[\#15171f\],
+html[data-theme="light"] .bg-\[\#16181e\],
+html[data-theme="light"] .bg-\[\#17161f\],
+html[data-theme="light"] .bg-\[\#17171b\],
+html[data-theme="light"] .bg-\[\#17171c\],
+html[data-theme="light"] .bg-\[\#17171c\]\/95,
+html[data-theme="light"] .bg-\[\#17171e\],
+html[data-theme="light"] .bg-\[\#19191e\]\/95,
+html[data-theme="light"] .bg-\[\#1c1d23\],
+html[data-theme="light"] .bg-\[\#202023\],
+html[data-theme="light"] .bg-\[\#202127\],
+html[data-theme="light"] .bg-\[\#21171a\]\/95,
+html[data-theme="light"] .bg-\[\#242429\],
+html[data-theme="light"] .bg-\[\#25252b\],
+html[data-theme="light"] .bg-\[\#3a321b\],
+html[data-theme="light"] .hover\:bg-\[\#17171f\]:hover,
+html[data-theme="light"] .hover\:bg-\[\#22222a\]:hover { background-color: var(--ui-surface); }
+
+html[data-theme="light"] .bg-\[\#e8e6df\],
+html[data-theme="light"] .bg-black\/10,
+html[data-theme="light"] .bg-black\/15,
+html[data-theme="light"] .bg-black\/20,
+html[data-theme="light"] .bg-black\/25,
+html[data-theme="light"] .bg-black\/35,
+html[data-theme="light"] .bg-white\/10,
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/\[0\.015\],
+html[data-theme="light"] .bg-white\/\[0\.025\],
+html[data-theme="light"] .bg-white\/\[0\.02\],
+html[data-theme="light"] .bg-white\/\[0\.03\],
+html[data-theme="light"] .bg-white\/\[0\.045\],
+html[data-theme="light"] .bg-white\/\[0\.04\],
+html[data-theme="light"] .bg-white\/\[0\.05\],
+html[data-theme="light"] .bg-white\/\[0\.06\],
+html[data-theme="light"] .bg-white\/\[0\.07\],
+html[data-theme="light"] .bg-white\/\[0\.08\],
+html[data-theme="light"] .bg-white\/\[0\.09\],
+html[data-theme="light"] .disabled\:bg-white\/5:disabled,
+html[data-theme="light"] .focus\:bg-white\/\[0\.03\]:focus { background-color: var(--ui-soft); }
+
+html[data-theme="light"] .border-\[\#d4af37\],
+html[data-theme="light"] .border-\[\#d4af37\]\/10,
+html[data-theme="light"] .border-\[\#d4af37\]\/15,
+html[data-theme="light"] .border-\[\#d4af37\]\/20,
+html[data-theme="light"] .border-\[\#d4af37\]\/25,
+html[data-theme="light"] .border-\[\#d4af37\]\/30,
+html[data-theme="light"] .border-\[\#d4af37\]\/40,
+html[data-theme="light"] .border-\[\#d4af37\]\/45,
+html[data-theme="light"] .border-\[\#d4af37\]\/50,
+html[data-theme="light"] .border-\[\#d4af37\]\/55,
+html[data-theme="light"] .border-\[\#d4af37\]\/65,
+html[data-theme="light"] .border-\[\#d4af37\]\/70,
+html[data-theme="light"] .border-\[\#d4af37\]\/80,
+html[data-theme="light"] .border-\[\#e8c766\],
+html[data-theme="light"] .border-\[\#e8c766\]\/20,
+html[data-theme="light"] .border-\[\#e8c766\]\/75,
+html[data-theme="light"] .focus\:border-\[\#d4af37\]:focus,
+html[data-theme="light"] .focus\:border-\[\#d4af37\]\/40:focus,
+html[data-theme="light"] .focus\:border-\[\#d4af37\]\/45:focus,
+html[data-theme="light"] .focus\:border-\[\#d4af37\]\/50:focus,
+html[data-theme="light"] .focus\:border-\[\#d4af37\]\/60:focus,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]:hover,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]\/35:hover,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]\/40:hover,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]\/50:hover,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]\/60:hover,
+html[data-theme="light"] .hover\:border-\[\#d4af37\]\/70:hover { border-color: var(--ui-accent-border); }
+
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/12,
+html[data-theme="light"] .border-white\/15,
+html[data-theme="light"] .border-white\/20,
+html[data-theme="light"] .border-white\/25,
+html[data-theme="light"] .border-white\/5,
+html[data-theme="light"] .border-white\/8,
+html[data-theme="light"] .border-white\/\[0\.055\],
+html[data-theme="light"] .border-white\/\[0\.06\],
+html[data-theme="light"] .border-white\/\[0\.07\],
+html[data-theme="light"] .border-white\/\[0\.08\],
+html[data-theme="light"] .border-white\/\[0\.09\],
+html[data-theme="light"] .border-white\/\[0\.12\],
+html[data-theme="light"] .border-white\/\[0\.13\],
+html[data-theme="light"] .border-white\/\[0\.1\],
+html[data-theme="light"] .disabled\:border-white\/10:disabled,
+html[data-theme="light"] .hover\:border-white\/10:hover,
+html[data-theme="light"] .hover\:border-white\/25:hover,
+html[data-theme="light"] .hover\:border-white\/\[0\.18\]:hover { border-color: var(--ui-border); }
+
+html[data-theme="light"] .disabled\:text-\[\#6d6a78\]:disabled,
+html[data-theme="light"] .hover\:text-white\/65:hover,
+html[data-theme="light"] .hover\:text-white\/75:hover,
+html[data-theme="light"] .text-\[\#4f4c58\],
+html[data-theme="light"] .text-\[\#5a5766\],
+html[data-theme="light"] .text-\[\#5f5c68\],
+html[data-theme="light"] .text-\[\#666370\],
+html[data-theme="light"] .text-\[\#666371\],
+html[data-theme="light"] .text-\[\#6d6a78\],
+html[data-theme="light"] .text-\[\#777482\],
+html[data-theme="light"] .text-\[\#8a8794\],
+html[data-theme="light"] .text-\[\#8a9ba9\],
+html[data-theme="light"] .text-\[\#9693a1\],
+html[data-theme="light"] .text-\[\#9a97a3\],
+html[data-theme="light"] .text-\[\#9b98a5\],
+html[data-theme="light"] .text-\[\#a09dae\],
+html[data-theme="light"] .text-\[\#a3a0ae\],
+html[data-theme="light"] .text-\[\#a5a2af\],
+html[data-theme="light"] .text-\[\#aaa7b4\],
+html[data-theme="light"] .text-\[\#b5b2a8\],
+html[data-theme="light"] .text-\[\#b8b4c2\],
+html[data-theme="light"] .text-\[\#b8b5c2\],
+html[data-theme="light"] .text-\[\#b9b6c2\],
+html[data-theme="light"] .text-\[\#b9b7c1\],
+html[data-theme="light"] .text-\[\#c1bdca\],
+html[data-theme="light"] .text-white\/50,
+html[data-theme="light"] .text-white\/55,
+html[data-theme="light"] .text-white\/58,
+html[data-theme="light"] .text-white\/60,
+html[data-theme="light"] .text-white\/65,
+html[data-theme="light"] .text-white\/70,
+html[data-theme="light"] .text-white\/75 { color: var(--ui-secondary); }
+
+html[data-theme="light"] .focus\:text-\[\#d6d3c8\]:focus,
+html[data-theme="light"] .hover\:text-\[\#e8e6df\]:hover,
+html[data-theme="light"] .hover\:text-white:hover,
+html[data-theme="light"] .hover\:text-white\/80:hover,
+html[data-theme="light"] .hover\:text-white\/85:hover,
+html[data-theme="light"] .text-\[\#d0cdd7\],
+html[data-theme="light"] .text-\[\#d6d3c8\],
+html[data-theme="light"] .text-\[\#d7d4cb\],
+html[data-theme="light"] .text-\[\#d8d6cf\],
+html[data-theme="light"] .text-\[\#dce8f1\],
+html[data-theme="light"] .text-\[\#e8e6df\],
+html[data-theme="light"] .text-\[\#eeece6\],
+html[data-theme="light"] .text-\[\#f1efe9\],
+html[data-theme="light"] .text-\[\#f5f3ea\],
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-white\/80,
+html[data-theme="light"] .text-white\/85 { color: var(--ui-text); }
+
+html[data-theme="light"] .hover\:bg-white\/10:hover,
+html[data-theme="light"] .hover\:bg-white\/5:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.025\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.035\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.05\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.07\]:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover { background-color: var(--ui-hover); }
+
+html[data-theme="light"] .hover\:text-\[\#e8c766\]:hover,
+html[data-theme="light"] .hover\:text-\[\#f0d98c\]:hover,
+html[data-theme="light"] .text-\[\#a09258\],
+html[data-theme="light"] .text-\[\#c6bfad\],
+html[data-theme="light"] .text-\[\#cdb064\],
+html[data-theme="light"] .text-\[\#d4af37\],
+html[data-theme="light"] .text-\[\#d4af37\]\/60,
+html[data-theme="light"] .text-\[\#d4af37\]\/70,
+html[data-theme="light"] .text-\[\#d7bc63\],
+html[data-theme="light"] .text-\[\#e8c766\],
+html[data-theme="light"] .text-\[\#e8c766\]\/90,
+html[data-theme="light"] .text-\[\#f0d98c\],
+html[data-theme="light"] .text-\[\#f2d879\],
+html[data-theme="light"] .text-amber-100,
+html[data-theme="light"] .text-amber-200\/60,
+html[data-theme="light"] .text-amber-200\/65,
+html[data-theme="light"] .text-amber-200\/70,
+html[data-theme="light"] .text-amber-200\/75,
+html[data-theme="light"] .text-amber-300,
+html[data-theme="light"] .text-amber-300\/65,
+html[data-theme="light"] .text-amber-400 { color: var(--ui-accent); }
+
+html[data-theme="light"] .hover\:text-rose-300:hover,
+html[data-theme="light"] .hover\:text-rose-400:hover,
+html[data-theme="light"] .text-red-300,
+html[data-theme="light"] .text-rose-200,
+html[data-theme="light"] .text-rose-300,
+html[data-theme="light"] .text-rose-300\/75,
+html[data-theme="light"] .text-rose-400 { color: var(--ui-danger); }
+
+html[data-theme="light"] .text-white\/10,
+html[data-theme="light"] .text-white\/20,
+html[data-theme="light"] .text-white\/22,
+html[data-theme="light"] .text-white\/25,
+html[data-theme="light"] .text-white\/28,
+html[data-theme="light"] .text-white\/30,
+html[data-theme="light"] .text-white\/32,
+html[data-theme="light"] .text-white\/35,
+html[data-theme="light"] .text-white\/38,
+html[data-theme="light"] .text-white\/40,
+html[data-theme="light"] .text-white\/45,
+html[data-theme="light"] .text-white\/48 { color: var(--ui-muted); }
+
+html[data-theme="light"] .text-emerald-200\/80,
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] .text-emerald-300\/65,
+html[data-theme="light"] .text-emerald-400 { color: var(--ui-success); }
+
+html[data-theme="light"] .text-sky-100\/70,
+html[data-theme="light"] .text-sky-200,
+html[data-theme="light"] .text-sky-300 { color: var(--ui-info); }
+
+/* Media overlays keep contrast against the original image/video. No filters are applied to assets. */
+html:root[data-theme="light"] :is(.bg-black\/40, .bg-black\/45, .bg-black\/50, .bg-black\/55, .bg-black\/60, .bg-black\/65, .bg-black\/70, .bg-black\/75, .bg-black\/80, .bg-black\/85, .bg-black\/90) { color:#f5f5f5; }
+
+/* Conversation layout keeps the existing prompt-kit composition. */
+html[data-theme="light"] .studio-shell { --studio-bg:#fafaf8; --studio-side:#f0f1f0; --studio-text:var(--ui-text); --studio-muted:var(--ui-secondary); --studio-accent:var(--ui-accent); }
+html[data-theme="light"] :is(.studio-new,.prompt-kit-input,.studio-control select,.studio-text-compose>div>div:last-child) { background:#fff; border-color:var(--ui-border); color:var(--ui-text); }
+html[data-theme="light"] .studio-search input::placeholder,
+html[data-theme="light"] .studio-history-title,
+html[data-theme="light"] .studio-history button svg,
+html[data-theme="light"] .studio-local-note,
+html[data-theme="light"] .studio-context-toolbar>button,
+html[data-theme="light"] .studio-compose-caption,
+html[data-theme="light"] .studio-media-actions,
+html[data-theme="light"] .studio-composer-note,
+html[data-theme="light"] .studio-media-heading,
+html[data-theme="light"] .studio-media-pending>span { color:var(--ui-secondary); }
+html[data-theme="light"] :is(.studio-history button,.studio-sidebar-bottom>button,.studio-top-actions>button,.studio-starters>button,.studio-mode-tabs>button,.studio-upload,.studio-menu) { color:var(--ui-secondary); }
+html[data-theme="light"] :is(.studio-new:hover,.studio-history button:hover,.studio-sidebar-bottom>button:hover,.studio-top-actions>button:hover,.studio-starters>button:hover,.studio-mode-tabs>button:hover,.studio-upload:hover) { background:var(--ui-hover); color:var(--ui-text); }
+html[data-theme="light"] .studio-history button[aria-current] { background:#e4e6e5; color:var(--ui-text); }
+html[data-theme="light"] :is(.studio-sidebar-bottom,.studio-title>span,.studio-starters>button) { border-color:var(--ui-border); }
+html[data-theme="light"] :is(.studio-top-actions>.studio-canvas-entry,.studio-mode-tabs>button[aria-pressed=true]) { background:#f3ecd9; border-color:var(--ui-accent-border); color:var(--ui-accent); }
+html[data-theme="light"] :is(.studio-welcome h2,.prompt-kit-input textarea,.studio-media-pending>p) { color:var(--ui-text); }
+html[data-theme="light"] .studio-welcome>p { color:var(--ui-secondary); }
+html[data-theme="light"] .prompt-kit-input textarea::placeholder,
+html[data-theme="light"] .studio-text-compose textarea::placeholder { color:var(--ui-muted); }
+html[data-theme="light"] :is(.studio-starters>button>svg,.studio-media-status,.studio-media-pending>div,.studio-media-actions>button:hover,.studio-composer-note button,.studio-composer-error button) { color:var(--ui-accent); }
+html[data-theme="light"] .prompt-kit-input:focus-within { border-color:var(--ui-accent); }
+html[data-theme="light"] :is(.studio-submit,.studio-text-compose button[title='发送'],.studio-text-compose button[title='正在发送…']) { background:#d4af37; color:#231e14; }
+html[data-theme="light"] .studio-submit:hover { background:#c6a12e; }
+html[data-theme="light"] .studio-submit:disabled { background:#e4e6e9; color:#656b75; }
+html[data-theme="light"] .studio-references>span { background:var(--ui-soft); color:var(--ui-text); }
+html[data-theme="light"] :is(.studio-media-status.is-failed,.studio-media-status.is-unknown,.studio-composer-error,.studio-page-error) { color:var(--ui-danger); }
+html[data-theme="light"] .studio-media-pending { background:#fff; border-color:var(--ui-border); }
+html[data-theme="light"] .studio-shell .chat-message-row.is-user .chat-message-bubble { background:#eceef0; color:var(--ui-text); }
+html[data-theme="light"] .studio-shell .chat-message-row.is-assistant .chat-message-bubble { color:var(--ui-text); }
+
+/* Creative surfaces: theme the editor chrome, never recolor generated media or the 3D scene. */
+html[data-theme="light"] .react-flow {
+  --xy-background-color:#f2f3f5;
+  --xy-edge-stroke:#64748b;
+  --xy-edge-stroke-selected:#8a640f;
+  --xy-connectionline-stroke:#8a640f;
+  background:#f2f3f5;
+}
+html[data-theme="light"] :is(.react-flow__controls,.react-flow__minimap) { border-color:var(--ui-border); background:#fff; box-shadow:0 6px 18px rgba(30,40,60,.10); }
+html[data-theme="light"] .react-flow__controls-button { color:var(--ui-secondary); border-color:var(--ui-border); }
+html[data-theme="light"] .react-flow__controls-button:hover { background:var(--ui-soft); }
+html[data-theme="light"] .story-handle.react-flow__handle { border-color:#767e8a; background:#fff; box-shadow:0 0 0 3px #f2f3f5; }
+html[data-theme="light"] .story-handle.react-flow__handle::after { color:#515762; }
+html[data-theme="light"] .story-handle.react-flow__handle:hover { background:#f3ecd9; border-color:var(--ui-accent); }
+
+html[data-theme="light"] .app-drag { border-bottom-color:var(--ui-border); }
+html[data-theme="light"] [class*="shadow-["] { box-shadow:0 5px 18px rgba(30,40,60,.10); }
+html[data-theme="light"] [class*="bg-[radial-gradient"] { background-image:none; background-color:#e9edf1; }

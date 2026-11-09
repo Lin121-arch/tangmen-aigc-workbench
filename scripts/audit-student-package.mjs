@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as asar from '@electron/asar'
+import { hasPrivateSupplierEndpoint } from './public-model-endpoints.mjs'
 
 const folder = path.resolve(process.argv[2] || '')
 const output = process.argv[3]
@@ -32,7 +33,7 @@ for (const name of entries) {
   const data = asar.extractFile(archive, archivePath).toString('utf8'); textFiles++
   if (/sk-[a-zA-Z0-9_-]{24,}/.test(data)) findings.push({ file: name, reason: 'possible-api-key' })
   if (containsTeacherCredential(data)) findings.push({ file: name, reason: 'teacher-credential-exact-match' })
-  if (!name.startsWith('node_modules/') && /(?:https?:\/\/[^\s"'<>]*luna\.it\.com|示例学员|example-private-id|C:[\\/]+Users[\\/]+Administrator)/i.test(data)) findings.push({ file: name, reason: 'teacher-endpoint-or-identity' })
+  if (!name.startsWith('node_modules/') && (hasPrivateSupplierEndpoint(data) || /(?:示例学员|example-private-id|C:[\\/]+Users[\\/]+Administrator)/i.test(data))) findings.push({ file: name, reason: 'teacher-endpoint-or-identity' })
 }
 const files = []
 async function walk(dir) {
@@ -55,7 +56,7 @@ async function walk(dir) {
         const nsisHelper = relative === 'resources/elevate.exe' && machine === 0x14c && sha256 === '9b1fbf0c11c520ae714af8aa9af12cfd48503eedecd7398d8992ee94d1b4dc37'
         if (machine !== 0x8664 && !nsisHelper) findings.push({ file: relative, reason: 'not-x64', machine })
       }
-      if (!relative.includes('app.asar') && /\.(json|md|txt|js|mjs|yaml|yml)$/i.test(relative) && /sk-[a-zA-Z0-9_-]{24,}|https?:\/\/[^\s"'<>]*luna\.it\.com/.test(data.toString('utf8'))) findings.push({ file: relative, reason: 'private-extra-resource' })
+      if (!relative.includes('app.asar') && /\.(json|md|txt|js|mjs|yaml|yml)$/i.test(relative) && (/sk-[a-zA-Z0-9_-]{24,}/.test(data.toString('utf8')) || hasPrivateSupplierEndpoint(data.toString('utf8')))) findings.push({ file: relative, reason: 'private-extra-resource' })
       files.push({ file: relative, bytes: data.length, sha256, ...(machine ? { machine: '0x' + machine.toString(16) } : {}) })
     }
   }

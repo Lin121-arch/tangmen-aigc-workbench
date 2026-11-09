@@ -65,6 +65,7 @@ import { PracticeGuide } from './PracticeGuide'
 import { ProjectAssetPreview } from './ProjectAssetPreview'
 import { CanvasAudioPreview, CanvasImagePreview, CanvasVideoPreview } from './CanvasMediaPreview'
 import { CanvasBackground } from './CanvasBackground'
+import { useThemeStore } from '../stores/theme.store'
 import { CanvasEdge } from './CanvasEdge'
 import { beginCanvasInteraction, endCanvasInteraction, resetCanvasInteraction } from './canvas-interaction'
 import { orderImageReferences } from '../shared/image-references'
@@ -1741,6 +1742,7 @@ const makeLinkedEdge = (
 })
 
 function CanvasFlow() {
+  const theme = useThemeStore(state => state.theme)
   const defaultMediaModels = useRef<{ image?: string; video?: string }>({})
   const shiftPressed = useKeyPress('Shift')
   const altPressed = useKeyPress('Alt')
@@ -2773,9 +2775,9 @@ function CanvasFlow() {
         minZoom={0.2}
         maxZoom={2}
         connectionLineType={ConnectionLineType.Bezier}
-        connectionLineStyle={{ stroke: '#e8c766', strokeWidth: 1.5 }}
+        connectionLineStyle={{ stroke: theme === 'light' ? '#8a640f' : '#e8c766', strokeWidth: 1.5 }}
         deleteKeyCode={['Backspace', 'Delete']}
-        colorMode="dark"
+        colorMode={theme}
         onlyRenderVisibleElements
         fitViewOptions={{ padding: 0.2 }}
       >
@@ -2786,7 +2788,7 @@ function CanvasFlow() {
           pannable
           zoomable
           nodeColor={(node) => node.data.kind === 'image' ? '#8b7355' : node.data.kind === 'image-editor' ? '#9a6d8d' : node.data.kind === 'video' ? '#566b7f' : node.data.kind === 'audio' ? '#7f6656' : node.data.kind === 'upscale' ? '#4f7f74' : node.data.kind === 'director' ? '#b08b2f' : '#67636e'}
-          maskColor="rgba(5,5,8,0.72)"
+          maskColor={theme === 'light' ? 'rgba(242,243,245,0.75)' : 'rgba(5,5,8,0.72)'}
         />
       </ReactFlow>
       {loaded && <PracticeGuide nodes={contentNodes} onLocate={locatePracticeNode} />}

@@ -1,72 +1,36 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "cn.tsai.aigcworkbench.student",
-  "productName": "唐门AIGC工作台",
+  "productName": "\u5510\u95e8AIGC\u5de5\u4f5c\u53f0",
   "asar": true,
-  "directories": {
-    "output": "release/${version}"
-  },
-  "files": [
-    "THIRD_PARTY_NOTICES.md",
-    "LICENSE",
-    "dist-electron",
-    "dist",
-    "!dist/models/ue-mannequin-retopology.*"
-  ],
+  "directories": { "output": "release/${version}" },
+  "files": ["THIRD_PARTY_NOTICES.md", "LICENSE", "dist-electron", "dist", "!dist/models/ue-mannequin-retopology.*"],
   "extraResources": [
-    {
-      "from": "resources/comfyui-workflows",
-      "to": "comfyui-workflows"
-    },
-    {
-      "from": "resources/claude-plugin",
-      "to": "claude-plugin"
-    }
+    { "from": "resources/comfyui-workflows", "to": "comfyui-workflows" },
+    { "from": "resources/claude-plugin", "to": "claude-plugin" },
+    { "from": "resources/diagnostics", "to": "diagnostics" }
   ],
   "mac": {
     "icon": "resources/app-icons/icon.icns",
     "artifactName": "${productName}_${version}.${ext}",
-    "target": [
-      "dmg",
-      "zip"
-    ]
+    "target": ["dmg", "zip"]
   },
   "win": {
     "icon": "resources/app-icons/icon.ico",
-    "target": [
-      {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      },
-      {
-        "target": "portable",
-        "arch": [
-          "x64"
-        ]
-      }
-    ],
+    "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "portable", "arch": ["x64"] }],
     "artifactName": "${productName}_${version}_Setup.${ext}"
   },
-  "portable": {
-    "artifactName": "${productName}_${version}_Portable.${ext}",
-    "requestExecutionLevel": "user"
-  },
+  "portable": { "artifactName": "${productName}_${version}_Portable.${ext}", "requestExecutionLevel": "user" },
   "nsis": {
     "installerIcon": "resources/app-icons/icon.ico",
     "uninstallerIcon": "resources/app-icons/icon.ico",
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "include": "resources/installer.nsh"
   },
   "publish": null,
-  "asarUnpack": [
-    "node_modules/@anthropic-ai/claude-agent-sdk-*/**",
-    "node_modules/@openai/codex-*/**"
-  ],
-  "extraMetadata": {
-    "name": "tangmen-aigc-student"
-  }
+  "asarUnpack": ["node_modules/@anthropic-ai/claude-agent-sdk-*/**", "node_modules/@openai/codex-*/**"],
+  "extraMetadata": { "name": "tangmen-aigc-student" }
 }

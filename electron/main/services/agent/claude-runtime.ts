@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { findInstalledAgent } from './agent-installations';
 
 /** Native processes cannot execute Electron's virtual ASAR paths. */
 export function resolveClaudeNativePath(binaryPath: string, exists = existsSync): string {
@@ -12,6 +13,8 @@ export function resolveClaudeNativePath(binaryPath: string, exists = existsSync)
 
 /** Resolve from the SDK itself so its platform binary always matches its version. */
 export function getClaudeExecutablePath(): string {
+  const installed = findInstalledAgent('claude-code');
+  if (installed) return installed;
   const appRequire = createRequire(import.meta.url);
   const sdkRequire = createRequire(appRequire.resolve('@anthropic-ai/claude-agent-sdk'));
   const binary = process.platform === 'win32' ? 'claude.exe' : 'claude';

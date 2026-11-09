@@ -1,6 +1,6 @@
 import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber'
+import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { Grid, Line, OrbitControls, PerspectiveCamera, TransformControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type {
@@ -55,6 +55,7 @@ import { BeginnerTutorialButton } from '../../components/BeginnerTutorial'
 import { ImportedDirectorModel } from './ImportedDirectorModel'
 import { useAppStore } from '../../stores/app.store'
 import { DirectorPrimitive } from './DirectorPrimitive'
+import { DirectorViewport } from './DirectorViewport'
 import { DirectorAssetLibrary } from './DirectorAssetLibrary'
 import { registerEditFlusher } from '../../shared/pending-edits'
 import { createDirectorHistory, moveDirectorHistory, recordDirectorEdit } from './director-history'
@@ -773,6 +774,7 @@ export function DirectorStageDialog({ project, onChange, onClose, onCapture, onE
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedUpdatedAtRef = useRef(draft.updatedAt)
   const transformingElementIdRef = useRef<string | null>(null)
+  const [viewportReady, setViewportReady] = useState(false)
   const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null)
   const [frameRect, setFrameRect] = useState<DirectorCropRect | null>(null)
   const directorCameraRef = useRef<{ position: DirectorVec3; target: DirectorVec3; fov: number }>({
@@ -1592,11 +1594,9 @@ export function DirectorStageDialog({ project, onChange, onClose, onCapture, onE
           </div>
         </aside>}
 
-        <main className="relative z-0 isolate min-w-0 flex-1 bg-[#0b0c10]">
-          <Canvas
-            shadows
-            camera={{ position: [7, 5, 9], fov: 48 }}
-            gl={{ antialias: true, preserveDrawingBuffer: true }}
+        <main className="relative z-0 isolate min-h-0 min-w-0 flex-1 bg-[#0b0c10]">
+          <DirectorViewport
+            onReadyChange={setViewportReady}
             onCreated={({ gl, camera }) => {
               glRef.current = gl
               gl.domElement.tabIndex = 0
@@ -1710,7 +1710,7 @@ export function DirectorStageDialog({ project, onChange, onClose, onCapture, onE
               })}
               <FrameCaptureBridge frame={currentFrame} requestId={renderRequestId} ready={readyFrameRef} />
             </Suspense>
-          </Canvas>
+          </DirectorViewport>
 
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute border border-white/25" style={frameRect ? { left: frameRect.x, top: frameRect.y, width: frameRect.width, height: frameRect.height } : { inset: 0 }}>
@@ -2052,8 +2052,8 @@ export function DirectorStageDialog({ project, onChange, onClose, onCapture, onE
               <NumberField label="时长" value={activeShot.durationSec} step={1} onChange={(durationSec) => updateActiveShot({ durationSec: Math.max(1 / 24, durationSec) })} />
             </div>
           )}
-          <button onClick={() => void capture()} disabled={!activeShot || busy} className="rounded-lg bg-[#e8e6df] px-3 py-2 text-[12px] font-semibold text-[#17171b] disabled:opacity-45">{capturing ? '正在拍摄…' : '拍摄构图并发送到画布'}</button>
-          <button onClick={() => void exportVideo()} disabled={!activeShot || busy} className="rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-2 text-[12px] font-semibold text-[#f0d98c] disabled:opacity-45">{exporting ? `正在导出 ${activeShot ? activeShot.durationSec.toFixed(1) : '0'} 秒…` : '导出预演视频到画布'}</button>
+          <button onClick={() => void capture()} disabled={!activeShot || busy || !viewportReady} className="rounded-lg bg-[#e8e6df] px-3 py-2 text-[12px] font-semibold text-[#17171b] disabled:opacity-45">{capturing ? '正在拍摄…' : '拍摄构图并发送到画布'}</button>
+          <button onClick={() => void exportVideo()} disabled={!activeShot || busy || !viewportReady} className="rounded-lg border border-[#d4af37]/30 bg-[#d4af37]/10 px-3 py-2 text-[12px] font-semibold text-[#f0d98c] disabled:opacity-45">{exporting ? `正在导出 ${activeShot ? activeShot.durationSec.toFixed(1) : '0'} 秒…` : '导出预演视频到画布'}</button>
           {captureError && <p className="truncate text-[12px] text-rose-300" title={captureError}>{captureError}</p>}
         </div>
       </footer>}

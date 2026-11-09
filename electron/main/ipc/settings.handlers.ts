@@ -13,8 +13,10 @@ import {
   testSeedreamConnection,
 } from '../services/settings.service'
 import { queryLunaModels } from '../services/luna-image.service'
+import { detectLocalAgents } from '../services/agent/agent-installations'
 
 export function registerSettingsHandlers(): void {
+  ipcMain.handle(IPC_CHANNELS.settings.detectLocalAgents, () => detectLocalAgents())
   ipcMain.handle(IPC_CHANNELS.settings.discoverServiceModels, (_event, provider: ModelProvider, endpointId: string) => discoverServiceModels(provider, endpointId))
   ipcMain.handle(IPC_CHANNELS.settings.discoverServiceModelCatalog, (_event, provider: ModelProvider, endpointId: string) => discoverServiceModelCatalog(provider, endpointId))
   ipcMain.handle(IPC_CHANNELS.settings.get, () => getAppSettingsView())

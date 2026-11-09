@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { Codex, type Thread, type ThreadEvent, type UserInput } from '@openai/codex-sdk';
+import type { Thread, ThreadEvent, UserInput } from '@openai/codex-sdk';
 import type { ChatMessage } from '../../../../src/shared/ipc.types';
 import type { AgentModelsResult } from '../../../../src/shared/agent-config';
 import type { AgentOptions } from './types';
@@ -154,6 +154,7 @@ class CodexSession {
     const runtime = await getNetworkCodexRuntime();
     const skills = await scanAvailableSkills(this.options.folderPath, 'codex');
     const skillInstructions = skills.map(skill => `- ${skill.name}: ${skill.description}\n  ${skill.path}`).join('\n');
+    const { Codex } = await import('@openai/codex-sdk');
     const codex = new Codex({
       codexPathOverride: runtime.executablePath,
       env: { ...runtime.env, AIGC_CANVAS_MCP_TOKEN: this.bridge.token },

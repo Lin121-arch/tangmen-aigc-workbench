@@ -3,6 +3,7 @@ dist/
 dist-electron/
 dist-ssr/
 release/
+resources/redistributables/
 build/
 .env
 .env.*

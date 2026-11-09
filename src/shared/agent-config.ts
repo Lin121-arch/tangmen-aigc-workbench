@@ -9,6 +9,14 @@ export type ProjectAgentConfig = z.infer<typeof projectAgentSchema>;
 export type AgentProvider = ProjectAgentConfig['provider'];
 export interface AgentModelOption { id: string; name: string }
 export interface AgentModelsResult { models: AgentModelOption[]; error?: string }
+export type LocalAgentId = 'codex' | 'claude-code';
+export interface LocalAgentStatus {
+  agent: LocalAgentId;
+  state: 'not-installed' | 'needs-login' | 'ready' | 'unknown' | 'error';
+  version?: string;
+  path?: string;
+  message: string;
+}
 
 export function normalizeProjectAgent(value: unknown): ProjectAgentConfig {
   return value === undefined

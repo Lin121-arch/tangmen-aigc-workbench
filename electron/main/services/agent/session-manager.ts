@@ -10,7 +10,7 @@
 import { codexSession, interruptCodex, isCodexAgentBusy } from './codex-session';
 import { enqueueRelayAgent, clearRelayAgentContext, interruptRelayAgent, isRelayAgentBusy } from './relay-session';
 import type { AgentProvider } from '../../../../src/shared/agent-config';
-import { query, type Query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
+import type { Query, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import { app } from 'electron';
 import path from 'node:path';
 import log from 'electron-log/main';
@@ -267,6 +267,7 @@ async function pump(session: ProjectAgentSession): Promise<void> {
         appPath: app.getAppPath(),
         resourcesPath: process.resourcesPath,
       });
+      const { query } = await import('@anthropic-ai/claude-agent-sdk');
       const stream = query({
         prompt: inputStream(session),
         options: {
@@ -284,7 +285,7 @@ async function pump(session: ProjectAgentSession): Promise<void> {
           // Resume existing session if available, otherwise start fresh
           ...(sessionId ? { resume: sessionId } : {}),
           mcpServers: {
-            'push-artifact': createPushArtifactServer(projectId, folderPath),
+            'push-artifact': await createPushArtifactServer(projectId, folderPath),
           },
           permissionMode: 'bypassPermissions',
           allowDangerouslySkipPermissions: true,

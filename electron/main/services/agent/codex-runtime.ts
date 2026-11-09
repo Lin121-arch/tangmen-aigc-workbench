@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { findInstalledAgent } from './agent-installations';
 
 /** Native Codex does not share Electron's system/PAC proxy resolution. */
 export async function getNetworkCodexRuntime() {
@@ -38,6 +39,8 @@ export function getCodexRuntime(): { executablePath: string; env: Record<string,
   }
   env.NO_PROXY = env.no_proxy = [...bypass].join(',');
   if (env.CODEX_EXECUTABLE) return { executablePath: env.CODEX_EXECUTABLE, env };
+  const installed = findInstalledAgent('codex');
+  if (installed) return { executablePath: installed, env };
   const targets: Record<string, string> = {
     'win32-x64': 'x86_64-pc-windows-msvc', 'win32-arm64': 'aarch64-pc-windows-msvc',
     'darwin-x64': 'x86_64-apple-darwin', 'darwin-arm64': 'aarch64-apple-darwin',

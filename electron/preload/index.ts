@@ -52,6 +52,8 @@ import type {
 import type { SaveDirectorStillRequest, SaveDirectorStillResult, SaveDirectorVideoRequest, SaveDirectorVideoResult } from '../../src/shared/director.types';
 
 export interface ElectronAPI {
+  setTheme: (theme: 'light' | 'dark') => void;
+  detectLocalAgents: () => Promise<import('../../src/shared/agent-config').LocalAgentStatus[]>;
   importDirectorModel: (projectId: string) => Promise<{ success: boolean; canceled?: boolean; relativePath?: string; name?: string; error?: string }>;
   generateChatMedia: (request: import('../../src/shared/ipc.types').ChatMediaRequest) => Promise<import('../../src/shared/ipc.types').ChatMediaResult>;
   refreshChatMedia: (projectId: string) => Promise<ChatMessage[]>;
@@ -132,6 +134,7 @@ const onPush = <T>(channel: string, callback: (payload: T) => void) => {
 };
 
 const api: ElectronAPI = {
+  setTheme: (theme) => ipcRenderer.send(IPC_CHANNELS.app.setTheme, theme),
   onBeforeClose: (callback) => onPush(IPC_CHANNELS.push.beforeClose, callback),
   onCloseCancelled: (callback) => onPush(IPC_CHANNELS.push.closeCancelled, callback),
   confirmClose: (result) => ipcRenderer.send(IPC_CHANNELS.app.closeReady, result),
@@ -161,6 +164,7 @@ const api: ElectronAPI = {
     invoke(IPC_CHANNELS.chat.interrupt, projectId),
   loadChatHistory: (folderPath) => invoke(IPC_CHANNELS.chat.loadHistory, folderPath),
   listAgentModels: (provider) => invoke(IPC_CHANNELS.chat.listModels, provider),
+  detectLocalAgents: () => invoke(IPC_CHANNELS.settings.detectLocalAgents),
   listAgentSkills: (projectId) => invoke(IPC_CHANNELS.chat.listSkills, projectId),
   clearAgentContext: (projectId) => invoke(IPC_CHANNELS.chat.clearContext, projectId),
   saveCanvasSnapshot: (folderPath, snapshot) => invoke(IPC_CHANNELS.canvas.save, folderPath, snapshot),

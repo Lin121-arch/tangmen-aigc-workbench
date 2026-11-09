@@ -34,6 +34,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 //
 process.env.APP_ROOT = path.join(__dirname, '../..')
 
+
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
@@ -211,6 +212,16 @@ registerCanvasHandlers()
 registerArtifactHandlers()
 registerComfyUIHandlers()
 registerSettingsHandlers()
+
+ipcMain.on(IPC_CHANNELS.app.setTheme, (event, theme: unknown) => {
+  if (!win || win.isDestroyed() || event.sender !== win.webContents || (theme !== 'light' && theme !== 'dark')) return
+  nativeTheme.themeSource = theme
+  const color = theme === 'light' ? '#f5f5f3' : '#0a0a0f'
+  win.setBackgroundColor(color)
+  if (process.platform === 'win32') win.setTitleBarOverlay({
+    color, symbolColor: theme === 'light' ? '#343438' : '#e8c766', height: 40,
+  })
+})
 
 async function createWindow() {
   win = new BrowserWindow({

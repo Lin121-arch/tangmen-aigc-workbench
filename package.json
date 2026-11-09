@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": "zhangtuo",
   "type": "module",
-  "main": "dist-electron/main/index.js",
+  "main": "dist-electron/main/bootstrap.js",
   "scripts": {
     "setup:runtime": "node node_modules/electron/install.js",
     "predev": "npm run setup:runtime",

@@ -1,5 +1,9 @@
 # Third-party notices
 
+## Microsoft Visual C++ Redistributable for Visual Studio 2015-2022
+
+The Windows installer build downloads the official Microsoft Visual C++ 2015-2022 x64 redistributable from Microsoft's versioned release endpoint, verifies its SHA-256 hash, and bundles it unchanged. The installer runs it silently. Microsoft retains its original digital signature.
+
 ## Prompt tutorial
 
 The independent prompt tutorial adapts methods and excerpts from these repositories. Original excerpts and license files are bundled as offline text in the tutorial from `src/content/prompt-sources/`. No upstream demonstration images were downloaded or redistributed.

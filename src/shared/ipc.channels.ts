@@ -1,5 +1,6 @@
 export const IPC_CHANNELS = {
   app: {
+    setTheme: 'app:setTheme',
     closeReady: 'app:closeReady',
   },
   project: {
@@ -55,6 +56,7 @@ export const IPC_CHANNELS = {
     upscaleVideo: 'comfyui:upscaleVideo',
   },
   settings: {
+    detectLocalAgents: 'settings:detectLocalAgents',
     discoverServiceModels: 'settings:discoverServiceModels',
     discoverServiceModelCatalog: 'settings:discoverServiceModelCatalog',
     get: 'settings:get',

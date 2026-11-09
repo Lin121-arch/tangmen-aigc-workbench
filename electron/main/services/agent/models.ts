@@ -1,4 +1,4 @@
-import { query, type Query } from '@anthropic-ai/claude-agent-sdk';
+import type { Query } from '@anthropic-ai/claude-agent-sdk';
 import { app } from 'electron';
 import type { AgentModelsResult } from '../../../../src/shared/agent-config';
 import { listCodexModels } from './codex-session';
@@ -22,6 +22,7 @@ export async function listAgentModels(provider: unknown): Promise<AgentModelsRes
   let stream: Query | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
+    const { query } = await import('@anthropic-ai/claude-agent-sdk');
     stream = query({
       prompt: (async function* () { await wait; })(),
       options: {

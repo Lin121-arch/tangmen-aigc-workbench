@@ -1,0 +1,66 @@
+import { test, expect, _electron as electron } from '@playwright/test'
+import path from 'node:path'
+import fs from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+
+const root = process.env.TANGMEN_TEST_APP_ROOT || path.resolve(import.meta.dirname, '../..')
+test('theme switch persists across restart and keeps settings, canvas and director usable', async () => {
+  test.setTimeout(100_000)
+  const folder = path.join(root, 'test-results', 'theme-' + randomUUID())
+  await fs.mkdir(folder, { recursive: true })
+  const options = { args: ['.', '--user-data-dir=' + path.join(folder, 'profile')], cwd: root }
+  let app = await electron.launch(options)
+  try {
+    let page = await app.firstWindow()
+    const errors: string[] = []
+    page.on('pageerror', e => errors.push(e.message))
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await expect(page.getByRole('button', { name: '切换到浅色模式', exact: true })).toBeVisible()
+    await expect(page.locator('.aigc-startup')).toHaveCount(0)
+    const before = await page.evaluate(() => window.electronAPI.getAppSettings())
+    await page.getByRole('button', { name: '切换到浅色模式', exact: true }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await expect.poll(() => app.evaluate(({ nativeTheme }) => nativeTheme.shouldUseDarkColors)).toBe(false)
+    await expect(page.locator('.studio-shell')).toHaveCSS('background-color', 'rgb(250, 250, 248)')
+    await expect(page.locator('.studio-new')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+    await page.screenshot({ path: path.join(folder, '01-light-chat.png') })
+    await page.getByRole('button', { name: '模型与设置', exact: true }).click()
+    await expect(page.getByLabel('搜索厂商')).toBeVisible()
+    await page.screenshot({ path: path.join(folder, '02-light-settings.png') })
+    expect(await page.evaluate(() => window.electronAPI.getAppSettings())).toEqual(before)
+    await page.getByTitle('返回首页', { exact: true }).click()
+    await page.getByRole('button', { name: '智能对话', exact: true }).click()
+    await page.getByRole('button', { name: '无限画布', exact: true }).click()
+    await expect(page.locator('.react-flow')).toHaveCSS('background-color', 'rgb(242, 243, 245)')
+    await page.getByTitle('添加3D 导演台节点', { exact: true }).click()
+    await page.screenshot({ path: path.join(folder, '03-light-canvas.png') })
+    await page.getByRole('button', { name: '打开导演台', exact: true }).click()
+    const stage = page.locator('[data-director-stage-dialog]')
+    await expect(stage.locator('[data-director-viewport-state]')).toHaveAttribute('data-director-viewport-state', 'ready', { timeout: 30000 })
+    const canvas = stage.locator('canvas')
+    const pixels = () => canvas.evaluate(c => {
+      const gl = (c as HTMLCanvasElement).getContext('webgl2')!
+      const pixel = new Uint8Array(4)
+      gl.readPixels(gl.drawingBufferWidth / 2, gl.drawingBufferHeight / 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel)
+      return Array.from(pixel)
+    })
+    await expect.poll(async () => (await pixels())[3]).toBe(255)
+    const lightPixel = await pixels()
+    await page.screenshot({ path: path.join(folder, '04-light-director.png') })
+    await page.getByRole('button', { name: '切换到深色模式', exact: true }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    expect(await pixels()).toEqual(lightPixel)
+    await page.getByRole('button', { name: '切换到浅色模式', exact: true }).click()
+    await stage.getByRole('button', { name: '保存并关闭', exact: true }).click()
+    await app.close()
+    app = await electron.launch(options)
+    page = await app.firstWindow()
+    await expect(page.getByRole('button', { name: '切换到深色模式', exact: true })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    await expect(page.locator('.aigc-startup')).toHaveCount(0)
+    await page.setViewportSize({ width: 1024, height: 768 })
+    await page.screenshot({ path: path.join(folder, '05-light-restart-1024.png') })
+    expect(errors).toEqual([])
+    console.log('Theme evidence:', folder)
+  } finally { await app.close() }
+})

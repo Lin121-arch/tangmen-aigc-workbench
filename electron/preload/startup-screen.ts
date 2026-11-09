@@ -38,6 +38,10 @@ export function installStartupScreen() {
     .aigc-startup__footer::before,.aigc-startup__footer::after { content:"";
       width:32px; height:1px; background:rgba(212,175,55,.18); }
     .aigc-startup--leaving { opacity:0; pointer-events:none; }
+    .aigc-startup[data-theme="light"] { background:#f5f5f3; color:#252830; }
+    .aigc-startup[data-theme="light"] .aigc-startup__name { color:#252830; }
+    .aigc-startup[data-theme="light"] :is(.aigc-startup__tagline,.aigc-startup__status,.aigc-startup__footer) { color:#656b75; }
+    .aigc-startup[data-theme="light"] .aigc-startup__retry { background:#fff; color:#795609; border-color:#b39a5c; }
     @keyframes aigc-startup-progress { from { transform:translateX(-100%); } to { transform:translateX(270%); } }
     @media (max-height:480px) {
       .aigc-startup__content { transform:none; padding:16px 0; }
@@ -76,6 +80,7 @@ export function installStartupScreen() {
   const append = () => {
     if (finished || document.readyState === 'loading') return;
     document.removeEventListener('readystatechange', append);
+    try { overlay.dataset.theme = localStorage.getItem('tangmen.appearance.theme') === 'light' ? 'light' : 'dark'; } catch { /* Use the dark fallback. */ }
     overlay.querySelector('img')!.src = new URL('app-icon.png', document.baseURI).href;
     document.head.append(style);
     document.body.append(overlay);

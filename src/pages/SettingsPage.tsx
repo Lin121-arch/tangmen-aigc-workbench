@@ -8,7 +8,9 @@ import { DEFAULT_RELAY_VIDEO_CONFIG, type RelayVideoConfig } from '../shared/rel
 import { RelayVideoSettings } from '../components/RelayVideoSettings';
 import { DEFAULT_RELAY_AGENT_BASE_URL } from '../shared/relay-agent-config';
 import { ModelServicesSettings } from '../components/ModelServicesSettings';
+import { LocalAgentSettings } from '../components/LocalAgentSettings';
 import { emptyModelServices, type ModelServicesConfig } from '../shared/model-services';
+import './settings.css';
 
 const fieldClass = 'w-full rounded-lg border border-white/[0.1] bg-[#09090e] px-3.5 py-3 text-sm text-[#e8e6df] outline-none transition placeholder:text-[#4f4c59] focus:border-[#d4af37]/60 focus:ring-2 focus:ring-[#d4af37]/10';
 const DEFAULT_QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
@@ -33,6 +35,7 @@ function hasSeedreamSettingsSupport(settings: AppSettingsView): boolean {
 }
 
 export function SettingsPage() {
+  const [section, setSection] = useState<'providers' | 'agents' | 'defaults' | 'advanced'>('providers');
   const [modelServices, setModelServices] = useState<ModelServicesConfig>(emptyModelServices);
   const [relayAgentBaseUrl, setRelayAgentBaseUrl] = useState(DEFAULT_RELAY_AGENT_BASE_URL);
   const [relayAgentModel, setRelayAgentModel] = useState('');
@@ -172,10 +175,10 @@ export function SettingsPage() {
       if (!next.relayVideoConfig || typeof next.relayVideoApiKeyConfigured !== 'boolean') throw new Error('主进程未接收视频配置，请完全重启工作台。');
       if (!clearRelayVideoApiKey && relayVideoApiKey.trim() && !next.relayVideoApiKeyConfigured) throw new Error('视频密钥保存后校验失败，输入内容已保留。');
       if (typeof next.lunaApiKeyConfigured !== 'boolean' || typeof next.lunaBaseUrl !== 'string') {
-        throw new Error('主进程未接收 Luna 配置，请完全退出工作台后重新启动。');
+        throw new Error('主进程未接收批量图片配置，请完全退出工作台后重新启动。');
       }
       if (!clearLunaApiKey && lunaApiKey.trim() && !next.lunaApiKeyConfigured) {
-        throw new Error('Luna API Key 保存后校验失败，输入内容已保留。');
+        throw new Error('批量图片 API Key 保存后校验失败，输入内容已保留。');
       }
       if (!hasQwenSettingsSupport(next)) {
         throw new Error('Electron 主进程仍是旧版本，未接收 Qwen 配置。请完全退出应用后重新启动，再重新保存。');
@@ -299,28 +302,32 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#0a0a0f]">
-      <header className="relative flex items-center justify-between border-b border-white/[0.08] bg-[#0d0d14] px-8 py-4">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/40 to-transparent" />
+    <div className="settings-page flex h-full flex-col">
+      <header className="settings-header">
         <div className="flex items-center gap-4">
           <button onClick={() => dirty ? setLeaveOpen(true) : setCurrentPage('home')} className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] text-[#8a8794] transition hover:border-[#d4af37]/40 hover:text-[#e8c766]" title="返回首页">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>
-            <h1 className="font-display text-lg font-semibold tracking-[0.22em] text-[#e8c766]">系统配置</h1>
-            <p className="mt-1 text-xs text-[#9a97a3]">{dirty ? '有未保存修改' : '图片、视频与分析服务'}</p>
+            <h1>模型配置</h1>
+            <p className="settings-header-status">{dirty ? '有未保存修改' : '管理模型连接与常用设置'}</p>
           </div>
         </div>
         {notice && <p role="status" aria-live="polite" className="mx-4 max-w-[50vw] text-xs leading-5 text-[#e8c766]">{notice}</p>}
-        <button onClick={handleSave} disabled={saving || loading} className="shrink-0 rounded-lg border border-[#d4af37]/50 bg-gradient-to-b from-[#e8c766] to-[#b08d2a] px-6 py-2.5 text-[13px] font-semibold tracking-widest text-[#241a05] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">
+        <button onClick={handleSave} disabled={saving || loading} className="settings-button settings-primary settings-save">
           {saving ? '保存中…' : '保存配置'}
         </button>
       </header>
 
+      <nav aria-label="设置分类" className="settings-section-nav">
+        {([['providers', '模型服务'], ['agents', '本机智能体'], ['defaults', '默认模型'], ['advanced', '高级设置']] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={section === id} onClick={() => setSection(id)}>{label}</button>)}
+      </nav>
       <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-7xl space-y-5 px-6 py-8 lg:px-8">
-          {!loading && <ModelServicesSettings value={modelServices} onChange={setModelServices} />}
-          <h2 className="pt-3 text-sm font-medium text-[#b8b4c2]">其他服务与旧版连接（兼容已有项目）</h2>
+        <div className="settings-content">
+          {loading && <p className="settings-hint" role="status">正在读取配置…</p>}
+          {!loading && <div hidden={section === 'agents' || section === 'advanced'}><ModelServicesSettings view={section === 'defaults' ? 'defaults' : 'providers'} value={modelServices} onChange={setModelServices} /></div>}
+          {section === 'agents' && <LocalAgentSettings />}
+          <section hidden={section !== 'advanced'} aria-label="高级设置" className="settings-legacy"><div className="settings-section-heading"><h2>高级设置</h2><p>本地 ComfyUI、音视频审查与旧版连接。使用上方厂商预设时，无需重复填写。</p></div><div className="mt-5 space-y-5">
 
           <div className="space-y-5">
             <div className="grid auto-rows-fr items-stretch gap-5 lg:grid-cols-1">
@@ -456,7 +463,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <SettingsCard title="Luna 中转 · 批量生图" description="使用 Luna 已公开的异步图片接口，结果直接回到画布。先读取当前 Key 可用的模型，再选择并保存。">
+          <SettingsCard title="TangMen 旧版 · 批量生图" description="使用兼容旧项目的异步图片接口，结果直接回到画布。先读取当前 Key 可用的模型，再选择并保存。">
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <label className="text-xs tracking-wider text-[#9a97a3]">API Base URL</label>
@@ -467,10 +474,10 @@ export function SettingsPage() {
                   <label className="text-xs tracking-wider text-[#9a97a3]">API Key</label>
                   {savedSettings?.lunaApiKeyConfigured && !clearLunaApiKey && <span className="text-[11px] text-emerald-400">已保存</span>}
                 </div>
-                <input type="password" aria-label="Luna API Key" value={lunaApiKey} onChange={event => { setLunaApiKey(event.target.value); setClearLunaApiKey(false); setLunaModels([]); setLunaResult(null); }} className={`${fieldClass} mt-2`} placeholder={savedSettings?.lunaApiKeyConfigured ? '留空保留已保存密钥，输入则替换' : '输入 Luna API Key'} autoComplete="off" spellCheck={false} />
+                <input type="password" aria-label="Luna API Key" value={lunaApiKey} onChange={event => { setLunaApiKey(event.target.value); setClearLunaApiKey(false); setLunaModels([]); setLunaResult(null); }} className={`${fieldClass} mt-2`} placeholder={savedSettings?.lunaApiKeyConfigured ? '留空保留已保存密钥，输入则替换' : '输入批量图片 API Key'} autoComplete="off" spellCheck={false} />
                 {savedSettings?.lunaApiKeyConfigured && <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-[#777482]">
                   <input type="checkbox" aria-label="清除 Luna 密钥" checked={clearLunaApiKey} onChange={event => { setClearLunaApiKey(event.target.checked); if (event.target.checked) setLunaApiKey(''); }} className="accent-[#d4af37]" />
-                  清除已保存的 Luna API Key
+                  清除已保存的批量图片 API Key
                 </label>}
               </div>
               <div>
@@ -481,7 +488,7 @@ export function SettingsPage() {
                 </select>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button onClick={handleLunaModels} disabled={loadingLunaModels || !lunaBaseUrl.trim() || (clearLunaApiKey && !lunaApiKey.trim())} className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-5 py-2.5 text-sm text-[#d7d4cb] transition hover:border-[#d4af37]/40 hover:text-[#e8c766] disabled:opacity-40">{loadingLunaModels ? '读取中…' : '读取 Luna 可用模型'}</button>
+                <button onClick={handleLunaModels} disabled={loadingLunaModels || !lunaBaseUrl.trim() || (clearLunaApiKey && !lunaApiKey.trim())} className="rounded-lg border border-white/[0.12] bg-white/[0.05] px-5 py-2.5 text-sm text-[#d7d4cb] transition hover:border-[#d4af37]/40 hover:text-[#e8c766] disabled:opacity-40">{loadingLunaModels ? '读取中…' : '读取批量图片可用模型'}</button>
                 {lunaResult && <p role="status" className={`text-xs ${lunaResult.success ? 'text-emerald-400' : 'text-rose-400'}`}>{lunaResult.message}</p>}
               </div>
             </div>
@@ -508,10 +515,11 @@ export function SettingsPage() {
               })}
             </div>
           </SettingsCard>
+          </div></section>
         </div>
       </main>
       {leaveOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-6 app-no-drag">
-        <section role="dialog" aria-modal="true" aria-label="未保存的配置" className="w-full max-w-md space-y-5 rounded-2xl border border-white/15 bg-[#17171e] p-6">
+        <section role="dialog" aria-modal="true" aria-label="未保存的配置" className="settings-leave-dialog w-full max-w-md space-y-5 rounded-2xl border p-6">
           <h2 className="text-base font-semibold">配置尚未保存</h2>
           <p className="text-sm text-white/65">保存后返回，或放弃这次修改。</p>
           <div className="flex flex-wrap justify-end gap-3 text-sm">

@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { safeStorage } from 'electron'
+import { displayProviderName } from '../../../src/shared/provider-presets'
 import { getAppDataDir } from './project.store'
 import { emptyModelServices, modelWorkflowId, normalizeModelServices, type ModelServicesConfig, type ModelServiceSnapshot, type ModelPurpose, type ModelProvider, type DiscoveredServiceModel } from '../../../src/shared/model-services'
 
@@ -58,7 +59,7 @@ async function read(): Promise<Stored> {
   const stored = { config: normalizeModelServices(config), secrets }; await write(stored); return stored
 }
 function view(stored: Stored): ModelServicesConfig {
-  return { ...stored.config, providers: stored.config.providers.map(p => ({ ...p, apiKeyConfigured: !!stored.secrets[p.id], endpoints: p.endpoints.map(e => ({ ...e, apiKeyConfigured: !!stored.secrets[secretId(p.id, e.id)] })) })) }
+  return { ...stored.config, providers: stored.config.providers.map(p => ({ ...p, name: displayProviderName(p), apiKeyConfigured: !!stored.secrets[p.id], endpoints: p.endpoints.map(e => ({ ...e, apiKeyConfigured: !!stored.secrets[secretId(p.id, e.id)] })) })) }
 }
 export const getModelServicesView = () => serialize(async () => view(await read()))
 export const saveModelServices = (input: unknown) => serialize(async () => {

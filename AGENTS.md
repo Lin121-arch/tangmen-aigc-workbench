@@ -1,5 +1,29 @@
 # 开发与发布约定
 
+## 模型配置分区（2026-11-09）
+
+- 设置分为模型服务、本机智能体、默认模型、高级设置四个入口；常用页只显示已添加厂商和当前用途，模型参数按行展开，旧版连接放入高级设置。
+- `src/pages/settings.css` 使用现有语义主题变量，浅色与深色同步。厂商目录仅在添加服务时显示，唐门第三方品牌仍为 TangMen。
+- 切换栏目时保持 ModelServicesSettings 挂载、配置草稿与发现结果；图片/视频密钥、provider/model ID、legacyAliases 和原项目绑定保持原语义。填写自定义地址不能自动收起正在编辑的连接表单。
+- `test/e2e/settings-layout.spec.ts` 验证隔离 profile 下分区、草稿、独立密钥和默认模型保存；模型服务与关闭窗口测试继续覆盖本地模拟请求、旧绑定和失败保存保护。截图只使用测试数据，不输出真实 Key。
+
+
+
+## 浅色 / 深色外观（2026-11-09）
+
+- 标题栏 GitHub 图标旁提供主题切换，主题由 `src/stores/theme.store.ts` 管理，仅保存到当前用户数据目录的 localStorage（`tangmen.appearance.theme`）。默认保留深色；重启恢复用户选择，不写入模型配置和工程。
+- `src/theme.css` 集中定义语义颜色及旧界面的浅色兼容；聊天、模型设置、画布、导演台操作面板和 Windows 标题栏同步切换。禁止通过 filter/invert 修改媒体、画板作品或 Three.js 场景颜色。
+- `app:setTheme` 仅接受 light/dark，主进程核对发送窗口；preload、共享通道和主进程同时维护。启动遮罩读取同一外观选择。
+- `test/e2e/theme.spec.ts` 在隔离 profile 验证切换、原生标题栏主题、重启记忆、配置不变、画布/导演台渲染和 3D 像素保持；可通过 TANGMEN_TEST_APP_ROOT 验证本机源代码构建。此验收不替代 Windows 10 安装包验收。
+
+
+## 2026-11-09 模型预设与导演台渲染
+
+- 用户已授权 TangMen 使用供应商公开接口作为预设：图片 `https://image.luna.it.com/v1`，视频 `https://img.luna.it.com`；仅地址可以公开，真实 Key、历史、画布和本机配置不得进入仓库。新用户的已连接服务商列表仍为空。
+- 厂商目录位于 `shared/provider-presets.ts` 和 `components/ProviderCatalog.tsx`。第三方显示品牌仅为 TangMen；官方预设只添加当前适配的协议。Anthropic 原生 Messages 尚未适配，卡片引导本机 Claude Code，不能误报为云端已接通。
+- `settings:detectLocalAgents` 只执行 Codex/Claude Code 的版本与登录状态查询，不提交模型请求。标准原生程序定位在 `agent-installations.ts`，检测与实际运行使用同一路径；未知状态不能推断为已登录。
+- `DirectorViewport.tsx` 在导演台懒加载范围内管理首帧就绪、15秒加载失败提示、WebGL连接中断和局部重载。视图失败时仍可保存工程，未就绪禁止截图/导出。验收必须等待真正的画面，不能只断言 DOM 中存在 canvas，也不能在 Three.js 初始化前用 getContext 创建测试上下文。
+
 本目录为唐门AIGC工作台的公开源码，不含维护者运行数据。不要在仓库中保存个人模型连接、密钥、聊天、项目、生成结果或诊断输出。
 
 - `npm ci`安装依赖并保留optionalDependencies。`npm run dev`和`npm run build`默认student模式，保持初始供应商、密钥与连接地址为空。

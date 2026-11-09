@@ -3,7 +3,7 @@ import type { ComfyWorkflowInfo } from './ipc.types'
 import { DEFAULT_RELAY_VIDEO_CONFIG, normalizeRelayVideoConfig, type RelayVideoConfig } from './relay-video-config'
 
 export const MODEL_PROTOCOLS = ['chat-completions', 'openai-image', 'luna-image', 'luna-media-image', 'luna-media-video', 'gemini-image', 'ark-image', 'ark-video', 'json-video'] as const
-export const PROTOCOL_LABELS: Record<ModelProtocol, string> = { 'chat-completions': 'Chat Completions · 对话', 'openai-image': '标准 Images · 生图 / 编辑', 'luna-image': 'Luna 旧站批量图片', 'luna-media-image': 'Luna 新站图片任务', 'luna-media-video': 'Luna 新站视频任务', 'gemini-image': 'Gemini 原生图片', 'ark-image': '方舟 Seedream 图片', 'ark-video': '方舟 Seedance 视频', 'json-video': '自定义 JSON 视频任务' }
+export const PROTOCOL_LABELS: Record<ModelProtocol, string> = { 'chat-completions': 'Chat Completions · 对话', 'openai-image': '标准 Images · 生图 / 编辑', 'luna-image': 'TangMen 旧版批量图片', 'luna-media-image': 'TangMen 图片任务', 'luna-media-video': 'TangMen 视频任务', 'gemini-image': 'Gemini 原生图片', 'ark-image': '方舟 Seedream 图片', 'ark-video': '方舟 Seedance 视频', 'json-video': '自定义 JSON 视频任务' }
 export type ModelProtocol = typeof MODEL_PROTOCOLS[number]
 export type ModelPurpose = 'chat' | 'image' | 'video'
 export type ModelCapability = ModelPurpose | 'tools' | 'vision' | 'image-edit' | 'first-frame'
@@ -63,7 +63,7 @@ export function normalizeModelServices(value: unknown): ModelServicesConfig {
       if (e.protocol === 'ark-image' && m.referenceLimit > 10) throw new Error('当前方舟图片适配最多支持 10 张参考图')
       if (e.protocol === 'luna-image') {
         const limit = m.modelId.includes('pro-image') ? 14 : m.modelId.includes('flash-image') ? 3 : 0
-        if (m.referenceLimit > limit) throw new Error(`当前 Luna 批量适配为此模型支持 ${limit} 张参考图，请核对协议或使用其他图片端点`)
+        if (m.referenceLimit > limit) throw new Error(`当前批量图片适配为此模型支持 ${limit} 张参考图，请核对协议或使用其他图片端点`)
       }
     }
   }

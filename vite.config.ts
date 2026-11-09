@@ -32,7 +32,7 @@ export default defineConfig(({ command, mode }) => {
       tailwindcss(),
       electron({
         main: {
-          entry: 'electron/main/index.ts',
+          entry: 'electron/main/bootstrap.ts',
           vite: {
             mode,
             resolve: {
